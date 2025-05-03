@@ -4,7 +4,7 @@ use std::env;
 use std::path::PathBuf;
 use tokio::net::TcpListener;
 
-mod config;
+use config;
 mod service;
 
 use crate::config::Config;
