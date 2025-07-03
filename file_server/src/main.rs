@@ -23,7 +23,7 @@ async fn main() -> Result<(), String> {
 
     println!("file_server: {}", conf.host_and_port);
 
-    let svc = service::Svc::new(conf.directory, conf.content_encodings, conf.filepath_404);
+    let svc = service::Svc::from(conf);
 
     loop {
         let (stream, _remote_address) = match listener.accept().await {
