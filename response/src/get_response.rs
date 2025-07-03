@@ -10,34 +10,35 @@ use tokio::fs;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
-use crate::available_encodings::AvailableEncodings;
 use crate::content_type::get_content_type;
 use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
 use crate::range_response::build_range_response;
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
-use crate::type_flyweight::BoxedResponse;
+use crate::type_flyweight::{BoxedResponse, ResponseParams};
 
 pub async fn build_get_response(
     req: Request<Incoming>,
-    directory: PathBuf,
-    available_encodings: AvailableEncodings,
-    fallback_404: Option<PathBuf>,
+    res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
     // check for range request
-    if let Some(res) = build_range_response(&req, &directory, &available_encodings).await {
+    if let Some(res) =
+        build_range_response(&req, &res_params.directory, &res_params.available_encodings).await
+    {
         return res;
     }
 
     // request file
-    let encodings = get_encodings(&req, &available_encodings);
+    let encodings = get_encodings(&req, &res_params.available_encodings);
 
     // serve file
-    if let Some(res) = build_file_response(&req, &directory, &encodings).await {
+    if let Some(res) = build_file_response(&req, &res_params.directory, &encodings).await {
         return res;
     };
 
     // serve 404
-    if let Some(res) = build_not_found_response(&directory, &fallback_404, &encodings).await {
+    if let Some(res) =
+        build_not_found_response(&res_params.directory, &res_params.filepath_404, &encodings).await
+    {
         return res;
     };
 
@@ -59,21 +60,21 @@ async fn build_file_response(
 
 async fn build_not_found_response(
     directory: &PathBuf,
-    fallback_404: &Option<PathBuf>,
+    filepath_404: &Option<PathBuf>,
     encodings: &Option<Vec<String>>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let fallback = match fallback_404 {
+    let fallback = match filepath_404 {
         Some(fb) => fb,
         _ => return None,
     };
 
     // file starts with directory
-    let fallback_404_abs = match path::absolute(fallback) {
+    let filepath_404_abs = match path::absolute(fallback) {
         Ok(fb) => fb,
         _ => return None,
     };
 
-    if !fallback_404_abs.starts_with(directory) {
+    if !filepath_404_abs.starts_with(directory) {
         return None;
     }
 

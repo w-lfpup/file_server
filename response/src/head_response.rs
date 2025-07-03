@@ -6,20 +6,18 @@ use hyper::StatusCode;
 use std::path::PathBuf;
 use tokio::fs;
 
-use crate::available_encodings::AvailableEncodings;
 use crate::content_type::get_content_type;
 use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
-use crate::type_flyweight::BoxedResponse;
+use crate::type_flyweight::{BoxedResponse, ResponseParams};
 
 pub async fn build_head_response(
     req: Request<Incoming>,
-    directory: PathBuf,
-    available_encodings: AvailableEncodings,
+    res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
-    let encodings = get_encodings(&req, &available_encodings);
+    let encodings = get_encodings(&req, &res_params.available_encodings);
 
-    let filepath = match get_path_from_request_url(&req, &directory).await {
+    let filepath = match get_path_from_request_url(&req, &res_params.directory).await {
         Some(fp) => fp,
         _ => return build_last_resort_response(StatusCode::NOT_FOUND, NOT_FOUND_404),
     };
