@@ -5,7 +5,7 @@ use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 
-use crate::config::Config;
+use config::Config;
 /*
     BoxedResponse is a type.
     It should work with hyper responses across
@@ -15,8 +15,8 @@ use response::{build_response, AvailableEncodings, BoxedResponse};
 
 #[derive(Clone, Debug)]
 pub struct Svc {
-    directory: PathBuf,
     available_encodings: AvailableEncodings,
+    directory: PathBuf,
     fallback_404: Option<PathBuf>,
 }
 
@@ -25,8 +25,8 @@ impl Svc {
         let available_encodings = AvailableEncodings::from(&config.content_encodings);
 
         Svc {
-            directory: config.directory,
             available_encodings: available_encodings,
+            directory: config.directory,
             fallback_404: config.filepath_404,
         }
     }
