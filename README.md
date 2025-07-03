@@ -3,6 +3,12 @@
 An `http` file server written in rust using [tokio](https://tokio.rs/) and
 [hyper](https://hyper.rs/).
 
+Includes support for:
+- http 1.1 / 2
+- boxed responses (send large files frame by frame)
+- `head` requests
+- `range` requests
+
 ## How to use
 
 ### Install
@@ -16,7 +22,7 @@ cargo install --path file_server/file_server
 
 ### Run
 
-Run the following command:
+Bash the following command:
 
 ```sh
 file_server
@@ -24,7 +30,7 @@ file_server
 
 This will start `file_server` with it's default configuration in the `cwd`.
 
-Bash the following command to serve files in the `cwd` at `localhost:3000`:
+Now files can be requested from the `cwd` at `localhost:3000`:
 
 ```sh
 curl localhost:3000
