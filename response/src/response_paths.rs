@@ -58,7 +58,7 @@ pub async fn get_path_from_request_url(
 
 pub fn get_encodings(
     req: &Request<Incoming>,
-    content_encodings: &Option<Vec<String>>,
+    available_encodings: &AvailableEncodings,
 ) -> Option<Vec<String>> {
     let accept_encoding_header = match req.headers().get(ACCEPT_ENCODING) {
         Some(enc) => enc,
@@ -69,8 +69,6 @@ pub fn get_encodings(
         Ok(s) => s,
         _ => return None,
     };
-
-    let available_encodings = AvailableEncodings::from(content_encodings);
 
     let mut encodings = Vec::new();
     for encoding in encoding_str.split(",") {

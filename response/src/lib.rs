@@ -8,5 +8,6 @@ mod response_paths;
 mod responses;
 mod type_flyweight;
 
+pub use crate::available_encodings::AvailableEncodings;
 pub use crate::responses::build_response;
 pub use crate::type_flyweight::BoxedResponse;

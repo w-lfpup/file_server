@@ -45,9 +45,9 @@ async fn main() -> Result<(), String> {
 
 async fn get_config() -> Result<Config, String> {
     match env::args().nth(1) {
-        Some(conf_path) => {
-            let conf_path_buf = PathBuf::from(conf_path);
-            return Config::try_from(&conf_path_buf).await;
+        Some(conf_path_arg) => {
+            let conf_pathbuf = PathBuf::from(conf_path_arg);
+            return Config::try_from(&conf_pathbuf).await;
         }
         _ => Config::new(),
     }

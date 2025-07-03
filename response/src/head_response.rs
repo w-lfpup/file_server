@@ -6,6 +6,7 @@ use hyper::StatusCode;
 use std::path::PathBuf;
 use tokio::fs;
 
+use crate::available_encodings::AvailableEncodings;
 use crate::content_type::get_content_type;
 use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
@@ -14,15 +15,16 @@ use crate::type_flyweight::BoxedResponse;
 pub async fn build_head_response(
     req: Request<Incoming>,
     directory: PathBuf,
-    content_encodings: Option<Vec<String>>,
+    available_encodings: AvailableEncodings,
 ) -> Result<BoxedResponse, hyper::http::Error> {
+    let encodings = get_encodings(&req, &available_encodings);
+
     let filepath = match get_path_from_request_url(&req, &directory).await {
         Some(fp) => fp,
         _ => return build_last_resort_response(StatusCode::NOT_FOUND, NOT_FOUND_404),
     };
 
     let content_type = get_content_type(&filepath);
-    let encodings = get_encodings(&req, &content_encodings);
 
     // encodings
     if let Some(res) = compose_encoded_response(&filepath, content_type, encodings).await {
@@ -40,16 +42,18 @@ pub async fn build_head_response(
 async fn compose_encoded_response(
     filepath: &PathBuf,
     content_type: &str,
-    encodings: Option<Vec<String>>,
+    content_encodings: Option<Vec<String>>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let encds = match encodings {
+    let encodings = match content_encodings {
         Some(encds) => encds,
         _ => return None,
     };
 
-    for enc in encds {
-        if let Some(encoded_path) = add_extension(filepath, &enc) {
-            if let Some(res) = compose_response(&encoded_path, content_type, Some(enc)).await {
+    for content_encoding in encodings {
+        if let Some(encoded_path) = add_extension(filepath, &content_encoding) {
+            if let Some(res) =
+                compose_response(&encoded_path, content_type, Some(content_encoding)).await
+            {
                 return Some(res);
             }
         };

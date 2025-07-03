@@ -10,6 +10,7 @@ use tokio::fs;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
+use crate::available_encodings::AvailableEncodings;
 use crate::content_type::get_content_type;
 use crate::last_resort_response::build_last_resort_response;
 use crate::range_response::build_range_response;
@@ -21,16 +22,16 @@ pub const NOT_FOUND_404: &str = "404 not found";
 pub async fn build_get_response(
     req: Request<Incoming>,
     directory: PathBuf,
-    content_encodings: Option<Vec<String>>,
+    available_encodings: AvailableEncodings,
     fallback_404: Option<PathBuf>,
 ) -> Result<BoxedResponse, hyper::http::Error> {
     // check for range request
-    if let Some(res) = build_range_response(&req, &directory, &content_encodings).await {
+    if let Some(res) = build_range_response(&req, &directory, &available_encodings).await {
         return res;
     }
 
     // request file
-    let encodings = get_encodings(&req, &content_encodings);
+    let encodings = get_encodings(&req, &available_encodings);
 
     // serve file
     if let Some(res) = build_file_response(&req, &directory, &encodings).await {

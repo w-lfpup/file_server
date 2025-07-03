@@ -11,6 +11,7 @@ use tokio::fs::File;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::ReaderStream;
 
+use crate::available_encodings::AvailableEncodings;
 use crate::content_type::get_content_type;
 use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
@@ -28,7 +29,7 @@ pub const RANGE_NOT_SATISFIABLE_416: &str = "416 range not satisfiable";
 pub async fn build_range_response(
     req: &Request<IncomingBody>,
     directory: &PathBuf,
-    content_encodings: &Option<Vec<String>>,
+    available_encodings: &AvailableEncodings,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let range_header = match get_range_header(req) {
         Some(rh) => rh,
@@ -36,7 +37,7 @@ pub async fn build_range_response(
     };
 
     let ranges = get_ranges(&range_header);
-    if let Some(res) = compose_range_response(req, directory, content_encodings, ranges).await {
+    if let Some(res) = compose_range_response(req, directory, available_encodings, ranges).await {
         return Some(res);
     };
 
@@ -137,7 +138,7 @@ fn get_window_range(range_chunk: &str) -> Option<(Option<usize>, Option<usize>)>
 async fn compose_range_response(
     req: &Request<IncomingBody>,
     directory: &PathBuf,
-    content_encodings: &Option<Vec<String>>,
+    available_encodings: &AvailableEncodings,
     ranges: Option<Vec<(Option<usize>, Option<usize>)>>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let rngs = match ranges {
@@ -155,7 +156,7 @@ async fn compose_range_response(
         _ => return None,
     };
 
-    let encodings = get_encodings(req, content_encodings);
+    let encodings = get_encodings(req, available_encodings);
 
     if 1 == rngs.len() {
         if let Some(res) = build_single_range_response(&filepath, encodings, rngs).await {
