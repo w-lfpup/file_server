@@ -17,22 +17,19 @@ pub async fn build_head_response(
 ) -> Result<BoxedResponse, hyper::http::Error> {
     let encodings = get_encodings(&req, &res_params.available_encodings);
 
-    let filepath = match get_path_from_request_url(&req, &res_params.directory).await {
-        Some(fp) => fp,
-        _ => return build_last_resort_response(StatusCode::NOT_FOUND, NOT_FOUND_404),
+    if let Some(filepath) = get_path_from_request_url(&req, &res_params.directory).await {
+        let content_type = get_content_type(&filepath);
+
+        // encodings
+        if let Some(res) = compose_encoded_response(&filepath, content_type, encodings).await {
+            return res;
+        };
+
+        // origin target
+        if let Some(res) = compose_response(&filepath, content_type, None).await {
+            return res;
+        }
     };
-
-    let content_type = get_content_type(&filepath);
-
-    // encodings
-    if let Some(res) = compose_encoded_response(&filepath, content_type, encodings).await {
-        return res;
-    };
-
-    // origin target
-    if let Some(res) = compose_response(&filepath, content_type, None).await {
-        return res;
-    }
 
     build_last_resort_response(StatusCode::NOT_FOUND, NOT_FOUND_404)
 }
