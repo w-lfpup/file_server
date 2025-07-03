@@ -1,7 +1,7 @@
 use hyper::body::Incoming;
 use hyper::header::ACCEPT_ENCODING;
 use hyper::http::Request;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::path;
 use std::path::PathBuf;
 use tokio::fs;
@@ -95,7 +95,6 @@ pub fn add_extension(filepath: &PathBuf, encoding: &str) -> Option<PathBuf> {
         _ => return None,
     };
 
-    let os_ext = OsStr::new(enc_ext);
     let mut fp_with_ext = OsString::from(filepath);
     fp_with_ext.push(enc_ext);
 

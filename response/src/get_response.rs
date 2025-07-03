@@ -12,12 +12,10 @@ use tokio_util::io::ReaderStream;
 
 use crate::available_encodings::AvailableEncodings;
 use crate::content_type::get_content_type;
-use crate::last_resort_response::build_last_resort_response;
+use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
 use crate::range_response::build_range_response;
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
 use crate::type_flyweight::BoxedResponse;
-
-pub const NOT_FOUND_404: &str = "404 not found";
 
 pub async fn build_get_response(
     req: Request<Incoming>,
