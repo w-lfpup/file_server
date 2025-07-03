@@ -30,11 +30,11 @@ impl ResponseParams {
 
 pub async fn build_response(
     req: Request<Incoming>,
-    response_params: ResponseParams,
+    res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
     match req.method() {
-        &Method::GET => build_get_response(req, response_params).await,
-        &Method::HEAD => build_head_response(req, response_params).await,
+        &Method::GET => build_get_response(req, res_params).await,
+        &Method::HEAD => build_head_response(req, res_params).await,
         _ => build_last_resort_response(StatusCode::METHOD_NOT_ALLOWED, METHOD_NOT_ALLOWED_405),
     }
 }

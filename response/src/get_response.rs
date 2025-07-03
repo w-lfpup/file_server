@@ -27,6 +27,14 @@ pub async fn build_get_response(
         return res;
     }
 
+    // fallback to file response
+    build_the_file_response(req, res_params).await
+}
+
+pub async fn build_the_file_response(
+    req: Request<Incoming>,
+    res_params: ResponseParams,
+) -> Result<BoxedResponse, hyper::http::Error> {
     // request file
     let encodings = get_encodings(&req, &res_params.available_encodings);
 
