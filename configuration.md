@@ -9,14 +9,11 @@ A valid [JSON configuration file](./file_server.json) adheres to the following s
 	"directory": "./demo",
 	"host_and_port": "127.0.0.1:4000",
 	"content_encodings": ["gzip", "deflate", "br", "zstd"],
-	"filepath_404s": [
-		["./demo/404.gz", "gzip"],
-		["./demo/404.html", null]
-	]
+	"filepath_404": "./demo/404.html"
 }
 ```
 
-The `content_encodings` and `filepath_404s` properties are optional.
+The `content_encodings` and `filepath_404` properties are optional.
 
 ### Run
 

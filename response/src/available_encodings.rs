@@ -1,13 +1,13 @@
 #[derive(Clone, Debug)]
 pub struct AvailableEncodings {
-    pub gzip: bool,
-    pub deflate: bool,
-    pub br: bool,
-    pub zstd: bool,
+    gzip: bool,
+    deflate: bool,
+    br: bool,
+    zstd: bool,
 }
 
 impl AvailableEncodings {
-    pub fn new(potential_encodings: &Option<Vec<String>>) -> AvailableEncodings {
+    pub fn from(potential_encodings: &Option<Vec<String>>) -> AvailableEncodings {
         let mut av_enc = AvailableEncodings {
             gzip: false,
             deflate: false,
@@ -15,21 +15,20 @@ impl AvailableEncodings {
             zstd: false,
         };
 
-        if let Some(pe) = potential_encodings {
-            av_enc.update(pe);
-        }
-
+        av_enc.update(potential_encodings);
         av_enc
     }
 
-    pub fn update(&mut self, potential_encodings: &Vec<String>) {
-        for encoding in potential_encodings {
-            match encoding.as_str() {
-                "gzip" => self.gzip = true,
-                "deflate" => self.deflate = true,
-                "br" => self.br = true,
-                "zstd" => self.zstd = true,
-                _ => {}
+    pub fn update(&mut self, potential_encodings: &Option<Vec<String>>) {
+        if let Some(encodings) = potential_encodings {
+            for encoding in encodings {
+                match encoding.as_str() {
+                    "gzip" => self.gzip = true,
+                    "deflate" => self.deflate = true,
+                    "br" => self.br = true,
+                    "zstd" => self.zstd = true,
+                    _ => {}
+                }
             }
         }
     }

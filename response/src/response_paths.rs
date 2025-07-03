@@ -70,7 +70,7 @@ pub fn get_encodings(
         _ => return None,
     };
 
-    let available_encodings = AvailableEncodings::new(content_encodings);
+    let available_encodings = AvailableEncodings::from(content_encodings);
 
     let mut encodings = Vec::new();
     for encoding in encoding_str.split(",") {
