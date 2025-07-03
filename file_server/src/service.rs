@@ -22,7 +22,7 @@ pub struct Svc {
 
 impl Svc {
     pub fn from(config: Config) -> Svc {
-        let available_encodings = AvailableEncodings::from(&config.content_encodings);
+        let available_encodings = AvailableEncodings::from(config.content_encodings);
 
         Svc {
             available_encodings: available_encodings,

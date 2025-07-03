@@ -7,7 +7,7 @@ pub struct AvailableEncodings {
 }
 
 impl AvailableEncodings {
-    pub fn from(potential_encodings: &Option<Vec<String>>) -> AvailableEncodings {
+    pub fn from(potential_encodings: Option<Vec<String>>) -> AvailableEncodings {
         let mut av_enc = AvailableEncodings {
             gzip: false,
             deflate: false,

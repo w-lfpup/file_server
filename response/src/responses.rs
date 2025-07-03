@@ -24,7 +24,7 @@ impl ResponseParams {
         content_encodings: Option<Vec<String>>,
         fallback_404: Option<PathBuf>,
     ) -> ResponseParams {
-        let available_encodings = AvailableEncodings::from(&content_encodings);
+        let available_encodings = AvailableEncodings::from(content_encodings);
 
         ResponseParams {
             directory: directory,
