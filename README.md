@@ -8,6 +8,7 @@ Includes support for:
 - boxed responses (send large files frame by frame)
 - `head` requests
 - `range` requests
+- encoded requests
 
 ## How to use
 
