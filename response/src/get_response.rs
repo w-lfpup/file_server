@@ -21,19 +21,17 @@ pub async fn build_get_response(
     res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
     // check for range request
-    if let Some(res) =
-        build_range_response(&req, &res_params.directory, &res_params.available_encodings).await
-    {
+    if let Some(res) = build_range_response(&req, &res_params).await {
         return res;
     }
 
     // fallback to file response
-    build_the_file_response(req, res_params).await
+    build_the_file_response(req, &res_params).await
 }
 
 pub async fn build_the_file_response(
     req: Request<Incoming>,
-    res_params: ResponseParams,
+    res_params: &ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
     // request file
     let encodings = get_encodings(&req, &res_params.available_encodings);
@@ -104,7 +102,7 @@ async fn build_response(
     };
 
     // origin target
-    compose_get_response(&filepath, content_type, status_code, None).await
+    compose_response(&filepath, content_type, status_code, None).await
 }
 
 async fn compose_encoded_response(
@@ -121,7 +119,7 @@ async fn compose_encoded_response(
     for enc in encds {
         if let Some(encoded_path) = add_extension(filepath, &enc) {
             if let Some(res) =
-                compose_get_response(&encoded_path, content_type, status_code, Some(enc)).await
+                compose_response(&encoded_path, content_type, status_code, Some(enc)).await
             {
                 return Some(res);
             }
@@ -131,7 +129,7 @@ async fn compose_encoded_response(
     None
 }
 
-async fn compose_get_response(
+async fn compose_response(
     filepath: &PathBuf,
     content_type: &str,
     status_code: StatusCode,

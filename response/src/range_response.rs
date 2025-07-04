@@ -15,7 +15,7 @@ use crate::available_encodings::AvailableEncodings;
 use crate::content_type::get_content_type;
 use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
-use crate::type_flyweight::BoxedResponse;
+use crate::type_flyweight::{BoxedResponse, ResponseParams};
 
 // Range: <unit>=<range-start>-
 // Range: <unit>=<range-start>-<range-end>
@@ -28,8 +28,7 @@ pub const RANGE_NOT_SATISFIABLE_416: &str = "416 range not satisfiable";
 
 pub async fn build_range_response(
     req: &Request<IncomingBody>,
-    directory: &PathBuf,
-    available_encodings: &AvailableEncodings,
+    res_params: &ResponseParams,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let range_header = match get_range_header(req) {
         Some(rh) => rh,
@@ -37,7 +36,14 @@ pub async fn build_range_response(
     };
 
     let ranges = get_ranges(&range_header);
-    if let Some(res) = compose_range_response(req, directory, available_encodings, ranges).await {
+    if let Some(res) = compose_range_response(
+        req,
+        &res_params.directory,
+        &res_params.available_encodings,
+        ranges,
+    )
+    .await
+    {
         return Some(res);
     };
 
