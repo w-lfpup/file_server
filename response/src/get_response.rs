@@ -26,10 +26,10 @@ pub async fn build_get_response(
     }
 
     // fallback to file response
-    build_the_file_response(req, &res_params).await
+    build_file_response(req, &res_params).await
 }
 
-pub async fn build_the_file_response(
+async fn build_file_response(
     req: Request<Incoming>,
     res_params: &ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
@@ -38,7 +38,7 @@ pub async fn build_the_file_response(
 
     // serve file
     // if get_path_from_request_url, build response
-    if let Some(res) = build_file_response(&req, &res_params.directory, &encodings).await {
+    if let Some(res) = build_req_path_response(&req, &res_params.directory, &encodings).await {
         return res;
     };
 
@@ -52,7 +52,7 @@ pub async fn build_the_file_response(
     build_last_resort_response(StatusCode::NOT_FOUND, NOT_FOUND_404)
 }
 
-async fn build_file_response(
+async fn build_req_path_response(
     req: &Request<Incoming>,
     directory: &PathBuf,
     encodings: &Option<Vec<String>>,
