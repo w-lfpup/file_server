@@ -14,3 +14,19 @@ pub struct ResponseParams {
     pub available_encodings: AvailableEncodings,
     pub filepath_404: Option<PathBuf>,
 }
+
+impl ResponseParams {
+    pub fn from(
+        directory: PathBuf,
+        filepath_404: Option<PathBuf>,
+        content_encodings: Option<Vec<String>>,
+    ) -> ResponseParams {
+        let available_encodings = AvailableEncodings::from(content_encodings);
+
+        ResponseParams {
+            directory: directory,
+            available_encodings: available_encodings,
+            filepath_404: filepath_404,
+        }
+    }
+}
