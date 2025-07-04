@@ -19,7 +19,11 @@ pub async fn get_path_from_request_url(
         _ => uri_path,
     };
 
-    let mut target_path = match path::absolute(directory.join(&stripped)) {
+    get_filepath(directory, &PathBuf::from(stripped)).await
+}
+
+pub async fn get_filepath(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf> {
+    let mut target_path = match path::absolute(directory.join(&filepath)) {
         Ok(pb) => pb,
         _ => return None,
     };

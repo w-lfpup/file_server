@@ -37,14 +37,6 @@ Now files can be requested from the `cwd` at `localhost:3000`:
 curl localhost:3000
 ```
 
-Alternatively, bash the following command to serve files based on a an example configuration:
-
-```sh
-file_server file_server.example.json
-```
-
-Open a browser and visit `http://localhost:4000`.
-
 ### Configuration
 
 A valid [JSON configuration file](./file_server.example.json) matches the following schema.
@@ -61,6 +53,16 @@ A valid [JSON configuration file](./file_server.example.json) matches the follow
 Filepaths can be relative or absolute. Relative paths are "relative from" the filepath of the JSON configuration.
 
 The `content_encodings` and `filepath_404` properties are optional.
+
+#### Run with configuration
+
+Bash the following command to serve files based on a an example configuration:
+
+```sh
+file_server file_server.example.json
+```
+
+Open a browser and visit `http://localhost:4000`.
 
 ### Accept-Encoding
 
