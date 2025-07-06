@@ -99,6 +99,8 @@ Bash the following command:
 curl -v -r 0-6 localhost:3000
 ```
 
+And the first 6 bytes of `index.html` will be delivered.
+
 Multipart ranges are not currently supported.
 
 Multipart ranges are memory hogs and difficult to deliver efficiently without abusing memory resources.
