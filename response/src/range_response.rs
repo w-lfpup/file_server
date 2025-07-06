@@ -66,20 +66,19 @@ fn get_range_header(req: &Request<IncomingBody>) -> Option<String> {
 }
 
 // on any fail return nothing
-fn get_ranges(range_str: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
-    let stripped_range = range_str.trim();
-    let range_values_str = match stripped_range.strip_prefix("bytes=") {
+fn get_ranges(range_header_value: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
+    let ranges_str = match range_header_value.trim().strip_prefix("bytes=") {
         Some(r) => r,
         _ => return None,
     };
 
     let mut ranges: Vec<(Option<usize>, Option<usize>)> = Vec::new();
-    for value_str in range_values_str.split(",") {
-        let trimmed_value_str = value_str.trim();
+    for range_value_str in ranges_str.split(",") {
+        let range_str = range_value_str.trim();
 
         // prefix range
-        if let Some(without_suffix) = trimmed_value_str.strip_suffix("-") {
-            let start_range_int: usize = match without_suffix.parse() {
+        if let Some(suffexless) = range_str.strip_suffix("-") {
+            let start_range_int: usize = match suffexless.parse() {
                 Ok(sri) => sri,
                 _ => return None,
             };
@@ -89,8 +88,8 @@ fn get_ranges(range_str: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
         }
 
         // suffix-range
-        if let Some(without_prefix) = trimmed_value_str.strip_prefix("-") {
-            let end_range_int: usize = match without_prefix.parse() {
+        if let Some(prefixless) = range_str.strip_prefix("-") {
+            let end_range_int: usize = match prefixless.parse() {
                 Ok(sri) => sri,
                 _ => return None,
             };
@@ -100,7 +99,7 @@ fn get_ranges(range_str: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
         }
 
         // window-range
-        let start_end_range = match get_window_range(trimmed_value_str) {
+        let start_end_range = match get_window_range(range_str) {
             Some(ser) => ser,
             _ => return None,
         };
@@ -108,7 +107,11 @@ fn get_ranges(range_str: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
         ranges.push(start_end_range)
     }
 
-    return Some(ranges);
+    if 0 < ranges.len() {
+        return Some(ranges);
+    }
+
+    None
 }
 
 fn get_window_range(range_chunk: &str) -> Option<(Option<usize>, Option<usize>)> {
