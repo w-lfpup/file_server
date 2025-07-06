@@ -23,6 +23,7 @@ use crate::type_flyweight::{BoxedResponse, ResponseParams};
 // multi range requests require an entirely different strategy
 // Range: <unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
 
+pub const BAD_REQUEST_400: &str = "400 bad request";
 pub const RANGE_NOT_SATISFIABLE_416: &str = "416 range not satisfiable";
 
 pub async fn build_range_response(
@@ -224,8 +225,8 @@ async fn compose_single_range_response(
         Some(se) => se,
         _ => {
             return Some(build_last_resort_response(
-                StatusCode::RANGE_NOT_SATISFIABLE,
-                RANGE_NOT_SATISFIABLE_416,
+                StatusCode::BAD_REQUEST,
+                BAD_REQUEST_400,
             ))
         }
     };
