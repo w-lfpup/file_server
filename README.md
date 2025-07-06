@@ -59,10 +59,10 @@ The `content_encodings` and `filepath_404` properties are optional.
 Bash the following command to serve files based on a an example configuration:
 
 ```sh
-file_server file_server.example.json
+file_server file_server/file_server.example.json
 ```
 
-Open a browser and visit `http://localhost:4000`.
+Open a browser and visit `http://localhost:3000` and an encoded version of `index.html` will be delivered.
 
 ### Accept-Encoding
 
@@ -81,7 +81,7 @@ And the source file has a correspponding gziped file:
 ./www/index.html.gz		# gzipped file
 ```
 
-Then `file_server` will send the encoded file, if available. Otherwise, it serves the source file.
+`File_server` will send the encoded file, if available. Otherwise, it serves the source file.
 
 ### No dynamic encoding support
 
@@ -93,9 +93,16 @@ This program serves static files. Just zip them up now to save memory resources.
 
 `File_server` supports single range requests.
 
-Multipart ranges are not currently supported because multipart ranges are a memory hog and difficult to
-deliver efficiently without potentially maxing out ram resources.
+Bash the following command:
+
+```sh
+curl -v -r 0-6 localhost:3000
+```
+
+Multipart ranges are not currently supported.
+
+Multipart ranges are memory hogs and difficult to deliver efficiently without abusing memory resources.
 
 ## Licence
 
-BSD 3-Clause License
+`File_server` is released under the BSD 3-Clause License.
