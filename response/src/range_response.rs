@@ -63,26 +63,29 @@ async fn compose_range_response(
     available_encodings: &AvailableEncodings,
     range_header: String,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    if let Some(filepath) = get_path_from_request_url(req, directory).await {
-        if let Some(ranges) = get_ranges(&range_header) {
-            let encodings = get_encodings(req, available_encodings);
+    let filepath = match get_path_from_request_url(req, directory).await {
+        Some(fp) => fp,
+        _ => {
+            return Some(build_last_resort_response(
+                StatusCode::NOT_FOUND,
+                NOT_FOUND_404,
+            ))
+        }
+    };
 
-            if 1 == ranges.len() {
-                if let Some(res) = build_single_range_response(&filepath, encodings, ranges).await {
-                    return Some(res);
-                }
+    if let Some(ranges) = get_ranges(&range_header) {
+        let encodings = get_encodings(req, available_encodings);
+
+        if 1 == ranges.len() {
+            if let Some(res) = build_single_range_response(&filepath, encodings, ranges).await {
+                return Some(res);
             }
-        };
-
-        return Some(build_last_resort_response(
-            StatusCode::RANGE_NOT_SATISFIABLE,
-            RANGE_NOT_SATISFIABLE_416,
-        ));
+        }
     };
 
     Some(build_last_resort_response(
-        StatusCode::NOT_FOUND,
-        NOT_FOUND_404,
+        StatusCode::RANGE_NOT_SATISFIABLE,
+        RANGE_NOT_SATISFIABLE_416,
     ))
 }
 
@@ -172,7 +175,8 @@ async fn build_single_range_response(
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let content_type = get_content_type(&filepath);
 
-    if let Some(res) = compose_encoded_response(&filepath, content_type, &encodings, &ranges).await
+    if let Some(res) =
+        compose_encoded_single_range_response(&filepath, content_type, &encodings, &ranges).await
     {
         return Some(res);
     };
@@ -181,7 +185,7 @@ async fn build_single_range_response(
     compose_single_range_response(&filepath, content_type, None, &ranges).await
 }
 
-async fn compose_encoded_response(
+async fn compose_encoded_single_range_response(
     filepath: &PathBuf,
     content_type: &str,
     encodings: &Option<Vec<String>>,
