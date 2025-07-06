@@ -6,15 +6,15 @@ use hyper::header::{CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYP
 use hyper::http::{Request, Response, StatusCode};
 use std::io::SeekFrom;
 use std::path::PathBuf;
-use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::ReaderStream;
 
+use crate::available_encodings::AvailableEncodings;
 use crate::content_type::get_content_type;
 use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
-use crate::type_flyweight::BoxedResponse;
+use crate::type_flyweight::{BoxedResponse, ResponseParams};
 
 // Range: <unit>=<range-start>-
 // Range: <unit>=<range-start>-<range-end>
@@ -23,27 +23,26 @@ use crate::type_flyweight::BoxedResponse;
 // multi range requests require an entirely different strategy
 // Range: <unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
 
+pub const BAD_REQUEST_400: &str = "400 bad request";
 pub const RANGE_NOT_SATISFIABLE_416: &str = "416 range not satisfiable";
 
 pub async fn build_range_response(
     req: &Request<IncomingBody>,
-    directory: &PathBuf,
-    content_encodings: &Option<Vec<String>>,
+    res_params: &ResponseParams,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
+    // bail if no range header
     let range_header = match get_range_header(req) {
         Some(rh) => rh,
         _ => return None,
     };
 
-    let ranges = get_ranges(&range_header);
-    if let Some(res) = compose_range_response(req, directory, content_encodings, ranges).await {
-        return Some(res);
-    };
-
-    Some(build_last_resort_response(
-        StatusCode::NOT_FOUND,
-        NOT_FOUND_404,
-    ))
+    compose_range_response(
+        req,
+        &res_params.directory,
+        &res_params.available_encodings,
+        range_header,
+    )
+    .await
 }
 
 fn get_range_header(req: &Request<IncomingBody>) -> Option<String> {
@@ -58,21 +57,49 @@ fn get_range_header(req: &Request<IncomingBody>) -> Option<String> {
     }
 }
 
+async fn compose_range_response(
+    req: &Request<IncomingBody>,
+    directory: &PathBuf,
+    available_encodings: &AvailableEncodings,
+    range_header: String,
+) -> Option<Result<BoxedResponse, hyper::http::Error>> {
+    if let Some(filepath) = get_path_from_request_url(req, directory).await {
+        if let Some(ranges) = get_ranges(&range_header) {
+            let encodings = get_encodings(req, available_encodings);
+
+            if 1 == ranges.len() {
+                if let Some(res) = build_single_range_response(&filepath, encodings, ranges).await {
+                    return Some(res);
+                }
+            }
+        };
+
+        return Some(build_last_resort_response(
+            StatusCode::RANGE_NOT_SATISFIABLE,
+            RANGE_NOT_SATISFIABLE_416,
+        ));
+    };
+
+    Some(build_last_resort_response(
+        StatusCode::NOT_FOUND,
+        NOT_FOUND_404,
+    ))
+}
+
 // on any fail return nothing
-fn get_ranges(range_str: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
-    let stripped_range = range_str.trim();
-    let range_values_str = match stripped_range.strip_prefix("bytes=") {
+fn get_ranges(range_header_value: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
+    let ranges_str = match range_header_value.trim().strip_prefix("bytes=") {
         Some(r) => r,
         _ => return None,
     };
 
     let mut ranges: Vec<(Option<usize>, Option<usize>)> = Vec::new();
-    for value_str in range_values_str.split(",") {
-        let trimmed_value_str = value_str.trim();
+    for range_value_str in ranges_str.split(",") {
+        let range_str = range_value_str.trim();
 
         // prefix range
-        if let Some(without_suffix) = trimmed_value_str.strip_suffix("-") {
-            let start_range_int: usize = match without_suffix.parse() {
+        if let Some(suffexless) = range_str.strip_suffix("-") {
+            let start_range_int: usize = match suffexless.parse() {
                 Ok(sri) => sri,
                 _ => return None,
             };
@@ -82,8 +109,8 @@ fn get_ranges(range_str: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
         }
 
         // suffix-range
-        if let Some(without_prefix) = trimmed_value_str.strip_prefix("-") {
-            let end_range_int: usize = match without_prefix.parse() {
+        if let Some(prefixless) = range_str.strip_prefix("-") {
+            let end_range_int: usize = match prefixless.parse() {
                 Ok(sri) => sri,
                 _ => return None,
             };
@@ -93,7 +120,7 @@ fn get_ranges(range_str: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
         }
 
         // window-range
-        let start_end_range = match get_window_range(trimmed_value_str) {
+        let start_end_range = match get_window_range(range_str) {
             Some(ser) => ser,
             _ => return None,
         };
@@ -101,7 +128,11 @@ fn get_ranges(range_str: &str) -> Option<Vec<(Option<usize>, Option<usize>)>> {
         ranges.push(start_end_range)
     }
 
-    return Some(ranges);
+    if 0 < ranges.len() {
+        return Some(ranges);
+    }
+
+    None
 }
 
 fn get_window_range(range_chunk: &str) -> Option<(Option<usize>, Option<usize>)> {
@@ -132,42 +163,6 @@ fn get_window_range(range_chunk: &str) -> Option<(Option<usize>, Option<usize>)>
     }
 
     None
-}
-
-async fn compose_range_response(
-    req: &Request<IncomingBody>,
-    directory: &PathBuf,
-    content_encodings: &Option<Vec<String>>,
-    ranges: Option<Vec<(Option<usize>, Option<usize>)>>,
-) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let rngs = match ranges {
-        Some(r) => r,
-        _ => {
-            return Some(build_last_resort_response(
-                StatusCode::RANGE_NOT_SATISFIABLE,
-                RANGE_NOT_SATISFIABLE_416,
-            ))
-        }
-    };
-
-    let filepath = match get_path_from_request_url(req, directory).await {
-        Some(fp) => fp,
-        _ => return None,
-    };
-
-    let encodings = get_encodings(req, content_encodings);
-
-    if 1 == rngs.len() {
-        if let Some(res) = build_single_range_response(&filepath, encodings, rngs).await {
-            return Some(res);
-        }
-    }
-
-    None
-}
-
-fn build_content_range_header_str(start: &usize, end: &usize, size: &usize) -> String {
-    "bytes ".to_string() + &start.to_string() + "-" + &end.to_string() + "/" + &size.to_string()
 }
 
 async fn build_single_range_response(
@@ -216,8 +211,13 @@ async fn compose_single_range_response(
     content_encoding: Option<&str>,
     ranges: &Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let size = match get_size(filepath).await {
-        Some(s) => s,
+    let mut file = match File::open(filepath).await {
+        Ok(m) => m,
+        _ => return None,
+    };
+
+    let size: usize = match file.metadata().await {
+        Ok(md) => md.len() as usize,
         _ => return None,
     };
 
@@ -225,15 +225,10 @@ async fn compose_single_range_response(
         Some(se) => se,
         _ => {
             return Some(build_last_resort_response(
-                StatusCode::RANGE_NOT_SATISFIABLE,
-                RANGE_NOT_SATISFIABLE_416,
+                StatusCode::BAD_REQUEST,
+                BAD_REQUEST_400,
             ))
         }
-    };
-
-    let mut file = match File::open(filepath).await {
-        Ok(m) => m,
-        _ => return None,
     };
 
     if let Err(_err) = file.seek(SeekFrom::Start(start.clone() as u64)).await {
@@ -261,19 +256,6 @@ async fn compose_single_range_response(
     return Some(builder.body(boxed_body));
 }
 
-async fn get_size(filepath: &PathBuf) -> Option<usize> {
-    let metadata = match fs::metadata(filepath).await {
-        Ok(m) => m,
-        _ => return None,
-    };
-
-    if !metadata.is_file() {
-        return None;
-    }
-
-    Some(metadata.len() as usize)
-}
-
 fn get_start_end(
     ranges: &Vec<(Option<usize>, Option<usize>)>,
     size: usize,
@@ -293,4 +275,8 @@ fn get_start_end(
     }
 
     None
+}
+
+fn build_content_range_header_str(start: &usize, end: &usize, size: &usize) -> String {
+    "bytes ".to_string() + &start.to_string() + "-" + &end.to_string() + "/" + &size.to_string()
 }

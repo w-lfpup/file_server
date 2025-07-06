@@ -4,48 +4,55 @@ use hyper::body::{Frame, Incoming};
 use hyper::header::{CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::http::{Request, Response};
 use hyper::StatusCode;
-use std::path;
 use std::path::PathBuf;
 use tokio::fs;
-use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
 use crate::content_type::get_content_type;
-use crate::last_resort_response::build_last_resort_response;
+use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
 use crate::range_response::build_range_response;
-use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
-use crate::type_flyweight::BoxedResponse;
-
-pub const NOT_FOUND_404: &str = "404 not found";
+use crate::response_paths::{
+    add_extension, get_encodings, get_filepath, get_path_from_request_url,
+};
+use crate::type_flyweight::{BoxedResponse, ResponseParams};
 
 pub async fn build_get_response(
     req: Request<Incoming>,
-    directory: PathBuf,
-    content_encodings: Option<Vec<String>>,
-    fallback_404: Option<PathBuf>,
+    res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
     // check for range request
-    if let Some(res) = build_range_response(&req, &directory, &content_encodings).await {
+    if let Some(res) = build_range_response(&req, &res_params).await {
         return res;
     }
 
+    // fallback to file response
+    build_file_response(req, &res_params).await
+}
+
+async fn build_file_response(
+    req: Request<Incoming>,
+    res_params: &ResponseParams,
+) -> Result<BoxedResponse, hyper::http::Error> {
     // request file
-    let encodings = get_encodings(&req, &content_encodings);
+    let encodings = get_encodings(&req, &res_params.available_encodings);
 
     // serve file
-    if let Some(res) = build_file_response(&req, &directory, &encodings).await {
+    // if get_path_from_request_url, build response
+    if let Some(res) = build_req_path_response(&req, &res_params.directory, &encodings).await {
         return res;
     };
 
     // serve 404
-    if let Some(res) = build_not_found_response(&directory, &fallback_404, &encodings).await {
+    if let Some(res) =
+        build_not_found_response(&res_params.directory, &res_params.filepath_404, &encodings).await
+    {
         return res;
     };
 
     build_last_resort_response(StatusCode::NOT_FOUND, NOT_FOUND_404)
 }
 
-async fn build_file_response(
+async fn build_req_path_response(
     req: &Request<Incoming>,
     directory: &PathBuf,
     encodings: &Option<Vec<String>>,
@@ -60,25 +67,21 @@ async fn build_file_response(
 
 async fn build_not_found_response(
     directory: &PathBuf,
-    fallback_404: &Option<PathBuf>,
+    filepath_404: &Option<PathBuf>,
     encodings: &Option<Vec<String>>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let fallback = match fallback_404 {
+    let fallback = match filepath_404 {
         Some(fb) => fb,
         _ => return None,
     };
 
     // file starts with directory
-    let fallback_404_abs = match path::absolute(fallback) {
-        Ok(fb) => fb,
+    let filepath_404 = match get_filepath(directory, fallback).await {
+        Some(fb) => fb,
         _ => return None,
     };
 
-    if !fallback_404_abs.starts_with(directory) {
-        return None;
-    }
-
-    build_response(&fallback, StatusCode::NOT_FOUND, &encodings).await
+    build_response(&filepath_404, StatusCode::NOT_FOUND, &encodings).await
 }
 
 async fn build_response(
@@ -96,7 +99,7 @@ async fn build_response(
     };
 
     // origin target
-    compose_get_response(&filepath, content_type, status_code, None).await
+    compose_response(&filepath, content_type, status_code, None).await
 }
 
 async fn compose_encoded_response(
@@ -113,7 +116,7 @@ async fn compose_encoded_response(
     for enc in encds {
         if let Some(encoded_path) = add_extension(filepath, &enc) {
             if let Some(res) =
-                compose_get_response(&encoded_path, content_type, status_code, Some(enc)).await
+                compose_response(&encoded_path, content_type, status_code, Some(enc)).await
             {
                 return Some(res);
             }
@@ -123,7 +126,7 @@ async fn compose_encoded_response(
     None
 }
 
-async fn compose_get_response(
+async fn compose_response(
     filepath: &PathBuf,
     content_type: &str,
     status_code: StatusCode,
@@ -138,7 +141,7 @@ async fn compose_get_response(
         return None;
     }
 
-    let file = match File::open(filepath).await {
+    let file = match fs::File::open(filepath).await {
         Ok(m) => m,
         _ => return None,
     };
