@@ -33,28 +33,28 @@ pub async fn get_filepath(directory: &PathBuf, filepath: &PathBuf) -> Option<Pat
         return None;
     }
 
-    let mtdt = match fs::metadata(&target_path).await {
-        Ok(sdf) => sdf,
+    let metadata = match fs::metadata(&target_path).await {
+        Ok(md) => md,
         _ => return None,
     };
 
     // if file bail early
-    if mtdt.is_file() {
+    if metadata.is_file() {
         return Some(target_path);
     }
 
     // if directory try an index.html file
-    if mtdt.is_dir() {
+    if metadata.is_dir() {
         target_path.push("index.html");
-    }
+     
+        let metadata = match fs::metadata(&target_path).await {
+            Ok(md) => md,
+            _ => return None,
+        };
 
-    let mtdt = match fs::metadata(&target_path).await {
-        Ok(sdf) => sdf,
-        _ => return None,
-    };
-
-    if mtdt.is_file() {
-        return Some(target_path);
+        if metadata.is_file() {
+            return Some(target_path);
+        }
     }
 
     None
