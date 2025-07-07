@@ -8,6 +8,9 @@ use crate::available_encodings::AvailableEncodings;
 
 pub type BoxedResponse = Response<BoxBody<Bytes, io::Error>>;
 
+pub const NOT_FOUND_404: &str = "404 not found";
+pub const BAD_REQUEST_400: &str = "400 bad request";
+
 #[derive(Clone, Debug)]
 pub struct ResponseParams {
     pub directory: PathBuf,

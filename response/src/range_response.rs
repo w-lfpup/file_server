@@ -10,11 +10,10 @@ use tokio::fs::File;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::ReaderStream;
 
-use crate::available_encodings::AvailableEncodings;
 use crate::content_type::get_content_type;
-use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
+use crate::last_resort_response::build_last_resort_response;
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
-use crate::type_flyweight::{BoxedResponse, ResponseParams};
+use crate::type_flyweight::{BoxedResponse, ResponseParams, BAD_REQUEST_400, NOT_FOUND_404};
 
 // Range: <unit>=<range-start>-
 // Range: <unit>=<range-start>-<range-end>
@@ -23,7 +22,6 @@ use crate::type_flyweight::{BoxedResponse, ResponseParams};
 // multi range requests require an entirely different strategy
 // Range: <unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
 
-pub const BAD_REQUEST_400: &str = "400 bad request";
 pub const RANGE_NOT_SATISFIABLE_416: &str = "416 range not satisfiable";
 
 pub async fn build_range_response(
@@ -36,13 +34,25 @@ pub async fn build_range_response(
         _ => return None,
     };
 
-    compose_range_response(
-        req,
-        &res_params.directory,
-        &res_params.available_encodings,
-        range_header,
-    )
-    .await
+    if let Some(filepath) = get_path_from_request_url(req, &res_params.directory).await {
+        if let Some(ranges) = get_ranges(&range_header) {
+            let encodings = get_encodings(req, &res_params.available_encodings);
+
+            if let Some(res) = build_single_range_response(&filepath, encodings, ranges).await {
+                return Some(res);
+            }
+        };
+
+        return Some(build_last_resort_response(
+            StatusCode::RANGE_NOT_SATISFIABLE,
+            RANGE_NOT_SATISFIABLE_416,
+        ));
+    }
+
+    Some(build_last_resort_response(
+        StatusCode::NOT_FOUND,
+        NOT_FOUND_404,
+    ))
 }
 
 fn get_range_header(req: &Request<IncomingBody>) -> Option<String> {
@@ -55,35 +65,6 @@ fn get_range_header(req: &Request<IncomingBody>) -> Option<String> {
         Ok(s) => Some(s.to_string()),
         _ => None,
     }
-}
-
-async fn compose_range_response(
-    req: &Request<IncomingBody>,
-    directory: &PathBuf,
-    available_encodings: &AvailableEncodings,
-    range_header: String,
-) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    if let Some(filepath) = get_path_from_request_url(req, directory).await {
-        if let Some(ranges) = get_ranges(&range_header) {
-            let encodings = get_encodings(req, available_encodings);
-
-            if 1 == ranges.len() {
-                if let Some(res) = build_single_range_response(&filepath, encodings, ranges).await {
-                    return Some(res);
-                }
-            }
-        };
-
-        return Some(build_last_resort_response(
-            StatusCode::RANGE_NOT_SATISFIABLE,
-            RANGE_NOT_SATISFIABLE_416,
-        ));
-    };
-
-    Some(build_last_resort_response(
-        StatusCode::NOT_FOUND,
-        NOT_FOUND_404,
-    ))
 }
 
 // on any fail return nothing
@@ -170,9 +151,14 @@ async fn build_single_range_response(
     encodings: Option<Vec<String>>,
     ranges: Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
+    if 1 != ranges.len() {
+        return None;
+    };
+
     let content_type = get_content_type(&filepath);
 
-    if let Some(res) = compose_encoded_response(&filepath, content_type, &encodings, &ranges).await
+    if let Some(res) =
+        compose_encoded_single_range_response(&filepath, content_type, &encodings, &ranges).await
     {
         return Some(res);
     };
@@ -181,7 +167,7 @@ async fn build_single_range_response(
     compose_single_range_response(&filepath, content_type, None, &ranges).await
 }
 
-async fn compose_encoded_response(
+async fn compose_encoded_single_range_response(
     filepath: &PathBuf,
     content_type: &str,
     encodings: &Option<Vec<String>>,
@@ -216,7 +202,7 @@ async fn compose_single_range_response(
         _ => return None,
     };
 
-    let size: usize = match file.metadata().await {
+    let size = match file.metadata().await {
         Ok(md) => md.len() as usize,
         _ => return None,
     };
