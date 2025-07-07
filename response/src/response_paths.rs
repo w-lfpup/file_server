@@ -47,12 +47,12 @@ pub async fn get_filepath(directory: &PathBuf, filepath: &PathBuf) -> Option<Pat
     if metadata.is_dir() {
         target_path.push("index.html");
 
-        let metadata = match fs::metadata(&target_path).await {
+        let updated_metadata = match fs::metadata(&target_path).await {
             Ok(md) => md,
             _ => return None,
         };
 
-        if metadata.is_file() {
+        if updated_metadata.is_file() {
             return Some(target_path);
         }
     }
