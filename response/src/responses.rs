@@ -5,7 +5,7 @@ use hyper::StatusCode;
 
 use crate::get_response;
 use crate::head_response;
-use crate::last_resort_response::build_last_resort_response;
+use crate::last_resort_response;
 use crate::type_flyweight::{BoxedResponse, ResponseParams, METHOD_NOT_ALLOWED_405};
 
 pub async fn build_response(
@@ -15,6 +15,9 @@ pub async fn build_response(
     match req.method() {
         &Method::GET => get_response::build_response(req, res_params).await,
         &Method::HEAD => head_response::build_response(req, res_params).await,
-        _ => build_last_resort_response(StatusCode::METHOD_NOT_ALLOWED, METHOD_NOT_ALLOWED_405),
+        _ => last_resort_response::build_response(
+            StatusCode::METHOD_NOT_ALLOWED,
+            METHOD_NOT_ALLOWED_405,
+        ),
     }
 }

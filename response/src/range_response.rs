@@ -11,7 +11,7 @@ use tokio::io::AsyncSeekExt;
 use tokio_util::io::ReaderStream;
 
 use crate::content_type::get_content_type;
-use crate::last_resort_response::build_last_resort_response;
+use crate::last_resort_response;
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
 use crate::type_flyweight::{
     BoxedResponse, ResponseParams, BAD_REQUEST_400, NOT_FOUND_404, RANGE_NOT_SATISFIABLE_416,
@@ -43,13 +43,13 @@ pub async fn build_response(
             }
         };
 
-        return Some(build_last_resort_response(
+        return Some(last_resort_response::build_response(
             StatusCode::RANGE_NOT_SATISFIABLE,
             RANGE_NOT_SATISFIABLE_416,
         ));
     }
 
-    Some(build_last_resort_response(
+    Some(last_resort_response::build_response(
         StatusCode::NOT_FOUND,
         NOT_FOUND_404,
     ))
@@ -207,10 +207,10 @@ async fn compose_single_range_response(
         _ => return None,
     };
 
-    let (start, end) = match get_start_end(ranges, size) {
+    let (start, end) = match get_start_and_end(ranges, size) {
         Some(se) => se,
         _ => {
-            return Some(build_last_resort_response(
+            return Some(last_resort_response::build_response(
                 StatusCode::BAD_REQUEST,
                 BAD_REQUEST_400,
             ))
@@ -242,7 +242,7 @@ async fn compose_single_range_response(
     return Some(builder.body(boxed_body));
 }
 
-fn get_start_end(
+fn get_start_and_end(
     ranges: &Vec<(Option<usize>, Option<usize>)>,
     size: usize,
 ) -> Option<(usize, usize)> {

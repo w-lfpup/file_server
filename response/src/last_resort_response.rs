@@ -7,7 +7,7 @@ use hyper::StatusCode;
 use crate::content_type::HTML;
 use crate::type_flyweight::BoxedResponse;
 
-pub fn build_last_resort_response(
+pub fn build_response(
     status_code: StatusCode,
     body: &'static str,
 ) -> Result<BoxedResponse, hyper::http::Error> {
