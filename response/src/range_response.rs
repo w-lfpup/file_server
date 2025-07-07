@@ -47,7 +47,7 @@ pub async fn build_range_response(
         return Some(build_last_resort_response(
             StatusCode::RANGE_NOT_SATISFIABLE,
             RANGE_NOT_SATISFIABLE_416,
-        ))
+        ));
     }
 
     Some(build_last_resort_response(
@@ -152,7 +152,9 @@ async fn build_single_range_response(
     encodings: Option<Vec<String>>,
     ranges: Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    if 1 != ranges.len() { return None; }
+    if 1 != ranges.len() {
+        return None;
+    };
 
     let content_type = get_content_type(&filepath);
 
@@ -201,7 +203,7 @@ async fn compose_single_range_response(
         _ => return None,
     };
 
-    let size: usize = match file.metadata().await {
+    let size = match file.metadata().await {
         Ok(md) => md.len() as usize,
         _ => return None,
     };
