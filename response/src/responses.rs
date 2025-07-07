@@ -6,9 +6,7 @@ use hyper::StatusCode;
 use crate::get_response;
 use crate::head_response;
 use crate::last_resort_response::build_last_resort_response;
-use crate::type_flyweight::{BoxedResponse, ResponseParams};
-
-pub const METHOD_NOT_ALLOWED_405: &str = "405 method not allowed";
+use crate::type_flyweight::{BoxedResponse, ResponseParams, METHOD_NOT_ALLOWED_405};
 
 pub async fn build_response(
     req: Request<Incoming>,

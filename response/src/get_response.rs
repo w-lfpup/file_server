@@ -10,7 +10,7 @@ use tokio_util::io::ReaderStream;
 
 use crate::content_type::get_content_type;
 use crate::last_resort_response::build_last_resort_response;
-use crate::range_response::build_range_response;
+use crate::range_response;
 use crate::response_paths::{add_extension, get_encodings, get_path, get_path_from_request_url};
 use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
 
@@ -19,23 +19,14 @@ pub async fn build_response(
     res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
     // check for range request
-    if let Some(res) = build_range_response(&req, &res_params).await {
+    if let Some(res) = range_response::build_response(&req, &res_params).await {
         return res;
     }
 
     // fallback to file response
-    fallback_to_get_response(req, &res_params).await
-}
-
-async fn fallback_to_get_response(
-    req: Request<Incoming>,
-    res_params: &ResponseParams,
-) -> Result<BoxedResponse, hyper::http::Error> {
-    // request file
     let encodings = get_encodings(&req, &res_params.available_encodings);
 
     // serve file
-    // if get_path_from_request_url, build response
     if let Some(res) = build_req_path_response(&req, &res_params.directory, &encodings).await {
         return res;
     };
