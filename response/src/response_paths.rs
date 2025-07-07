@@ -46,7 +46,7 @@ pub async fn get_filepath(directory: &PathBuf, filepath: &PathBuf) -> Option<Pat
     // if directory try an index.html file
     if metadata.is_dir() {
         target_path.push("index.html");
-     
+
         let metadata = match fs::metadata(&target_path).await {
             Ok(md) => md,
             _ => return None,
