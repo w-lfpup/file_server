@@ -7,9 +7,9 @@ use std::path::PathBuf;
 use tokio::fs;
 
 use crate::content_type::get_content_type;
-use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
+use crate::last_resort_response::build_last_resort_response;
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
-use crate::type_flyweight::{BoxedResponse, ResponseParams};
+use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
 
 pub async fn build_head_response(
     req: Request<Incoming>,

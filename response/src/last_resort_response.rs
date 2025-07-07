@@ -7,8 +7,6 @@ use hyper::StatusCode;
 use crate::content_type::HTML;
 use crate::type_flyweight::BoxedResponse;
 
-pub const NOT_FOUND_404: &str = "404 not found";
-
 pub fn build_last_resort_response(
     status_code: StatusCode,
     body: &'static str,

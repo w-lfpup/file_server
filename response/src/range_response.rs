@@ -11,9 +11,9 @@ use tokio::io::AsyncSeekExt;
 use tokio_util::io::ReaderStream;
 
 use crate::content_type::get_content_type;
-use crate::last_resort_response::{build_last_resort_response, NOT_FOUND_404};
+use crate::last_resort_response::build_last_resort_response;
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
-use crate::type_flyweight::{BoxedResponse, ResponseParams};
+use crate::type_flyweight::{BoxedResponse, ResponseParams, BAD_REQUEST_400, NOT_FOUND_404};
 
 // Range: <unit>=<range-start>-
 // Range: <unit>=<range-start>-<range-end>
@@ -22,7 +22,6 @@ use crate::type_flyweight::{BoxedResponse, ResponseParams};
 // multi range requests require an entirely different strategy
 // Range: <unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
 
-pub const BAD_REQUEST_400: &str = "400 bad request";
 pub const RANGE_NOT_SATISFIABLE_416: &str = "416 range not satisfiable";
 
 pub async fn build_range_response(
