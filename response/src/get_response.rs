@@ -9,35 +9,24 @@ use tokio::fs;
 use tokio_util::io::ReaderStream;
 
 use crate::content_type::get_content_type;
-use crate::last_resort_response::build_last_resort_response;
-use crate::range_response::build_range_response;
-use crate::response_paths::{
-    add_extension, get_encodings, get_filepath, get_path_from_request_url,
-};
+use crate::last_resort_response;
+use crate::range_response;
+use crate::response_paths::{add_extension, get_encodings, get_path, get_path_from_request_url};
 use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
 
-pub async fn build_get_response(
+pub async fn build_response(
     req: Request<Incoming>,
     res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
     // check for range request
-    if let Some(res) = build_range_response(&req, &res_params).await {
+    if let Some(res) = range_response::build_response(&req, &res_params).await {
         return res;
     }
 
     // fallback to file response
-    build_file_response(req, &res_params).await
-}
-
-async fn build_file_response(
-    req: Request<Incoming>,
-    res_params: &ResponseParams,
-) -> Result<BoxedResponse, hyper::http::Error> {
-    // request file
     let encodings = get_encodings(&req, &res_params.available_encodings);
 
     // serve file
-    // if get_path_from_request_url, build response
     if let Some(res) = build_req_path_response(&req, &res_params.directory, &encodings).await {
         return res;
     };
@@ -49,7 +38,7 @@ async fn build_file_response(
         return res;
     };
 
-    build_last_resort_response(StatusCode::NOT_FOUND, NOT_FOUND_404)
+    last_resort_response::build_response(StatusCode::NOT_FOUND, NOT_FOUND_404)
 }
 
 async fn build_req_path_response(
@@ -62,7 +51,7 @@ async fn build_req_path_response(
         _ => return None,
     };
 
-    build_response(&filepath, StatusCode::OK, &encodings).await
+    build_get_response(&filepath, StatusCode::OK, &encodings).await
 }
 
 async fn build_not_found_response(
@@ -76,15 +65,15 @@ async fn build_not_found_response(
     };
 
     // file starts with directory
-    let filepath_404 = match get_filepath(directory, fallback).await {
+    let filepath_404 = match get_path(directory, fallback).await {
         Some(fb) => fb,
         _ => return None,
     };
 
-    build_response(&filepath_404, StatusCode::NOT_FOUND, &encodings).await
+    build_get_response(&filepath_404, StatusCode::NOT_FOUND, &encodings).await
 }
 
-async fn build_response(
+async fn build_get_response(
     filepath: &PathBuf,
     status_code: StatusCode,
     encodings: &Option<Vec<String>>,

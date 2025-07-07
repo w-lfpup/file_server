@@ -19,10 +19,10 @@ pub async fn get_path_from_request_url(
         _ => uri_path,
     };
 
-    get_filepath(directory, &PathBuf::from(stripped)).await
+    get_path(directory, &PathBuf::from(stripped)).await
 }
 
-pub async fn get_filepath(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf> {
+pub async fn get_path(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf> {
     let mut target_path = match path::absolute(directory.join(&filepath)) {
         Ok(pb) => pb,
         _ => return None,
@@ -33,28 +33,28 @@ pub async fn get_filepath(directory: &PathBuf, filepath: &PathBuf) -> Option<Pat
         return None;
     }
 
-    let mtdt = match fs::metadata(&target_path).await {
-        Ok(sdf) => sdf,
+    let metadata = match fs::metadata(&target_path).await {
+        Ok(md) => md,
         _ => return None,
     };
 
     // if file bail early
-    if mtdt.is_file() {
+    if metadata.is_file() {
         return Some(target_path);
     }
 
     // if directory try an index.html file
-    if mtdt.is_dir() {
+    if metadata.is_dir() {
         target_path.push("index.html");
-    }
 
-    let mtdt = match fs::metadata(&target_path).await {
-        Ok(sdf) => sdf,
-        _ => return None,
-    };
+        let updated_metadata = match fs::metadata(&target_path).await {
+            Ok(md) => md,
+            _ => return None,
+        };
 
-    if mtdt.is_file() {
-        return Some(target_path);
+        if updated_metadata.is_file() {
+            return Some(target_path);
+        }
     }
 
     None
