@@ -4,10 +4,10 @@ use std::env;
 use std::path::PathBuf;
 use tokio::net::TcpListener;
 
-use config;
+mod config;
 mod service;
 
-use crate::config::Config;
+use config::Config;
 
 #[tokio::main]
 async fn main() -> Result<(), String> {

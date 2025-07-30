@@ -59,7 +59,7 @@ The `content_encodings` and `filepath_404` properties are optional.
 Bash the following command to serve files based on a an example configuration:
 
 ```sh
-file_server file_server/file_server.example.json
+file_server demo/demo.example.json
 ```
 
 Open a browser and visit `http://localhost:3000` and an encoded version of `index.html` will be delivered.
@@ -77,8 +77,8 @@ Accept-Encoding: gzip;
 And the source file has a correspponding gziped file: 
 
 ```sh
-./www/index.html		# source file
-./www/index.html.gz		# gzipped file
+index.html		# source file
+index.html.gz		# gzipped file
 ```
 
 `File_server` will send the encoded file, if available. Otherwise, it serves the source file.
@@ -105,6 +105,6 @@ Multipart ranges are not currently supported.
 
 Multipart ranges are memory hogs and difficult to deliver efficiently without abusing memory resources.
 
-## Licence
+## License
 
 `File_server` is released under the BSD 3-Clause License.

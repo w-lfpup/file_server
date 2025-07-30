@@ -4,7 +4,7 @@ use hyper::Request;
 use std::future::Future;
 use std::pin::Pin;
 
-use config::Config;
+use crate::config::Config;
 /*
     BoxedResponse is a type.
     It should work with hyper responses across
