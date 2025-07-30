@@ -1,0 +1,6 @@
+{
+	"directory": "./",
+	"host_and_port": "127.0.0.1:3000",
+	"content_encodings": ["zstd"],
+	"filepath_404": "./404.html"
+}
