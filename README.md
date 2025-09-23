@@ -29,7 +29,7 @@ Bash the following command:
 file_server
 ```
 
-This will start `file_server` with it's default configuration in the `cwd`.
+This will start `file_server` with using the `cwd` as a base directory.
 
 Now files can be requested from the `cwd` at `localhost:3000`:
 
@@ -39,18 +39,18 @@ curl localhost:3000
 
 ### Configuration
 
-A valid [JSON configuration file](./file_server.example.json) matches the following schema.
+A valid [JSON configuration file](./demo/file_server_config_example.json) matches the following schema.
 
 ```JSON
 {
-    "directory": "./demo",
+    "directory": "./",
     "host_and_port": "127.0.0.1:4000",
     "content_encodings": ["gzip", "deflate", "br", "zstd"],
-    "filepath_404": "./demo/404.html"
+    "filepath_404": "./404.html"
 }
 ```
 
-Filepaths can be relative or absolute. Relative paths are "relative from" the filepath of the JSON configuration.
+Filepaths can be relative or absolute. Relative paths are "relative from" the filepath of the JSON configuration file.
 
 The `content_encodings` and `filepath_404` properties are optional.
 
@@ -66,7 +66,7 @@ Open a browser and visit `http://localhost:3000` and an encoded version of `inde
 
 ### Accept-Encoding
 
-When an `accept-encoding` header is found in a request, `file_server` will return a corresponding `zip`-ed version of file if available.
+When a request has an `accept-encoding` header, `file_server` will return a corresponding `zip`-ed version of file if available.
 
 So if a request has the following header:
 
@@ -74,11 +74,11 @@ So if a request has the following header:
 Accept-Encoding: gzip;
 ```
 
-And the source file has a correspponding gziped file: 
+And the target file has a correspponding gziped file: 
 
 ```sh
 index.html		# source file
-index.html.gz		# gzipped file
+index.html.gz	# gzipped file
 ```
 
 `File_server` will send the encoded file, if available. Otherwise, it serves the source file.

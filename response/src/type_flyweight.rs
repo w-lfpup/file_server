@@ -29,9 +29,9 @@ impl ResponseParams {
         let available_encodings = AvailableEncodings::from(content_encodings);
 
         ResponseParams {
-            directory: directory,
-            available_encodings: available_encodings,
-            filepath_404: filepath_404,
+            directory,
+            available_encodings,
+            filepath_404,
         }
     }
 }

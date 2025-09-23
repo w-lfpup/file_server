@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::env;
 use std::path;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::fs;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -28,9 +28,9 @@ impl Config {
         })
     }
 
-    pub async fn try_from(source_path: &PathBuf) -> Result<Config, String> {
+    pub async fn try_from(filepath: &PathBuf) -> Result<Config, String> {
         // see if config exists
-        let config_json = match fs::read_to_string(source_path).await {
+        let config_json = match fs::read_to_string(filepath).await {
             Ok(r) => r,
             Err(e) => return Err(e.to_string()),
         };
@@ -41,7 +41,7 @@ impl Config {
         };
 
         // get target directory
-        let config_path = match path::absolute(&source_path) {
+        let config_path = match path::absolute(&filepath) {
             Ok(pb) => pb,
             Err(e) => return Err(e.to_string()),
         };
@@ -53,29 +53,33 @@ impl Config {
             }
         };
 
-        // get target directory relative to config path
-        let target_directory = parent_dir.join(config.directory);
-        let target_directory_abs = match path::absolute(target_directory) {
+        // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
+        // normalize lexically
+        let target_directory = match fs::canonicalize(parent_dir.join(config.directory)).await {
             Ok(pb) => pb,
             Err(e) => return Err(e.to_string()),
         };
 
-        config.directory = target_directory_abs;
-
         if let Some(origin_404s) = config.filepath_404 {
-            config.filepath_404 = match get_path_relative_to_origin(parent_dir, &origin_404s) {
-                Ok(pb) => Some(pb),
-                Err(e) => return Err(e.to_string()),
-            };
+            config.filepath_404 =
+                match get_path_relative_to_origin(&target_directory, &origin_404s).await {
+                    Ok(pb) => Some(pb),
+                    Err(e) => return Err(e.to_string()),
+                };
         }
+
+        config.directory = target_directory;
 
         Ok(config)
     }
 }
 
-fn get_path_relative_to_origin(source_dir: &Path, filepath: &PathBuf) -> Result<PathBuf, String> {
+async fn get_path_relative_to_origin(
+    source_dir: &PathBuf,
+    filepath: &PathBuf,
+) -> Result<PathBuf, String> {
     let target_path = source_dir.join(filepath);
-    let target_path_abs = match path::absolute(target_path) {
+    let target_path_abs = match fs::canonicalize(target_path).await {
         Ok(pb) => pb,
         Err(e) => return Err(e.to_string()),
     };
