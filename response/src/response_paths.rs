@@ -2,7 +2,6 @@ use hyper::body::Incoming;
 use hyper::header::ACCEPT_ENCODING;
 use hyper::http::Request;
 use std::ffi::OsString;
-use std::path;
 use std::path::PathBuf;
 use tokio::fs;
 
@@ -23,7 +22,9 @@ pub async fn get_path_from_request_url(
 }
 
 pub async fn get_path(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf> {
-    let mut target_path = match path::absolute(directory.join(&filepath)) {
+    // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
+    // normalize lexically in nightly
+    let mut target_path = match fs::canonicalize(directory.join(&filepath)).await {
         Ok(pb) => pb,
         _ => return None,
     };
@@ -38,7 +39,7 @@ pub async fn get_path(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf
         _ => return None,
     };
 
-    // if file bail early
+    // if file return early
     if metadata.is_file() {
         return Some(target_path);
     }

@@ -18,4 +18,4 @@ Cargo.lock
 # FILE SERVER
 
 *.json
-!*.example.json
+!file_server_config_example.json
