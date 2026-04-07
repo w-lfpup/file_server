@@ -6,6 +6,7 @@ use hyper::header::{CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYP
 use hyper::http::{Request, Response, StatusCode};
 use std::io::SeekFrom;
 use std::path::PathBuf;
+use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::ReaderStream;
@@ -38,7 +39,7 @@ pub async fn build_response(
         if let Some(ranges) = get_ranges(&range_header) {
             let encodings = get_encodings(req, &res_params.available_encodings);
 
-            if let Some(res) = build_single_range_response(&filepath, encodings, ranges).await {
+            if let Some(res) = build_single_range_response(&filepath, &encodings, ranges).await {
                 return Some(res);
             }
         };
@@ -148,7 +149,7 @@ fn get_window_range(range_chunk: &str) -> Option<(Option<usize>, Option<usize>)>
 
 async fn build_single_range_response(
     filepath: &PathBuf,
-    encodings: Option<Vec<String>>,
+    encodings: &Vec<String>,
     ranges: Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     if 1 != ranges.len() {
@@ -170,15 +171,10 @@ async fn build_single_range_response(
 async fn compose_encoded_single_range_response(
     filepath: &PathBuf,
     content_type: &str,
-    encodings: &Option<Vec<String>>,
+    encodings: &Vec<String>,
     ranges: &Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let encds = match encodings {
-        Some(encds) => encds,
-        _ => return None,
-    };
-
-    for enc in encds {
+    for enc in encodings {
         if let Some(encoded_path) = add_extension(filepath, &enc) {
             if let Some(res) =
                 compose_single_range_response(&encoded_path, content_type, Some(enc), ranges).await
@@ -197,16 +193,16 @@ async fn compose_single_range_response(
     content_encoding: Option<&str>,
     ranges: &Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let mut file = match File::open(filepath).await {
+    let metadata = match fs::metadata(filepath).await {
         Ok(m) => m,
         _ => return None,
     };
 
-    let size = match file.metadata().await {
-        Ok(md) => md.len() as usize,
-        _ => return None,
-    };
+    if !metadata.is_file() {
+        return None;
+    }
 
+    let size = metadata.len() as usize;
     let (start, end) = match get_start_and_end(ranges, size) {
         Some(se) => se,
         _ => {
@@ -217,6 +213,11 @@ async fn compose_single_range_response(
         }
     };
 
+    let mut file = match File::open(filepath).await {
+        Ok(m) => m,
+        _ => return None,
+    };
+
     if let Err(_err) = file.seek(SeekFrom::Start(start.clone() as u64)).await {
         return None;
     };
@@ -224,7 +225,7 @@ async fn compose_single_range_response(
     let mut buffer: Vec<u8> = Vec::with_capacity(end - start);
     buffer.resize(end - start, 0);
 
-    let content_range_header = build_content_range_header_str(&start, &end, &size);
+    let content_range_header = build_content_range_header_str(start, end, size);
     let reader_stream = ReaderStream::with_capacity(file, size);
     let stream_body = StreamBody::new(reader_stream.map_ok(Frame::data));
     let boxed_body = stream_body.boxed();
@@ -263,6 +264,6 @@ fn get_start_and_end(
     None
 }
 
-fn build_content_range_header_str(start: &usize, end: &usize, size: &usize) -> String {
+fn build_content_range_header_str(start: usize, end: usize, size: usize) -> String {
     "bytes ".to_string() + &start.to_string() + "-" + &end.to_string() + "/" + &size.to_string()
 }

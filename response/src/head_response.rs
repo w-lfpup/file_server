@@ -15,17 +15,14 @@ pub async fn build_response(
     req: Request<Incoming>,
     res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
-    let encodings = get_encodings(&req, &res_params.available_encodings);
-
     if let Some(filepath) = get_path_from_request_url(&req, &res_params.directory).await {
         let content_type = get_content_type(&filepath);
+        let encodings = get_encodings(&req, &res_params.available_encodings);
 
-        // encodings
-        if let Some(res) = compose_encoded_response(&filepath, content_type, encodings).await {
+        if let Some(res) = compose_encoded_response(&filepath, content_type, &encodings).await {
             return res;
         };
 
-        // origin target
         if let Some(res) = compose_response(&filepath, content_type, None).await {
             return res;
         }
@@ -37,17 +34,16 @@ pub async fn build_response(
 async fn compose_encoded_response(
     filepath: &PathBuf,
     content_type: &str,
-    content_encodings: Option<Vec<String>>,
+    content_encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let encodings = match content_encodings {
-        Some(encds) => encds,
-        _ => return None,
-    };
-
-    for content_encoding in encodings {
+    for content_encoding in content_encodings {
         if let Some(encoded_path) = add_extension(filepath, &content_encoding) {
-            if let Some(res) =
-                compose_response(&encoded_path, content_type, Some(content_encoding)).await
+            if let Some(res) = compose_response(
+                &encoded_path,
+                content_type,
+                Some(content_encoding.to_string()),
+            )
+            .await
             {
                 return Some(res);
             }

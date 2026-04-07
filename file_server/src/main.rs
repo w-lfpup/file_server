@@ -35,10 +35,12 @@ async fn main() -> Result<(), String> {
         let svc = svc.clone();
 
         tokio::task::spawn(async move {
-            // log service errors here
-            Builder::new(TokioExecutor::new())
+            if let Err(e) = Builder::new(TokioExecutor::new())
                 .serve_connection(io, svc)
                 .await
+            {
+                println!("server connection error:\n{}", e);
+            }
         });
     }
 }
