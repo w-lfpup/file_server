@@ -38,7 +38,7 @@ pub async fn build_response(
         if let Some(ranges) = get_ranges(&range_header) {
             let encodings = get_encodings(req, &res_params.available_encodings);
 
-            if let Some(res) = build_single_range_response(&filepath, encodings, ranges).await {
+            if let Some(res) = build_single_range_response(&filepath, &encodings, ranges).await {
                 return Some(res);
             }
         };
@@ -148,7 +148,7 @@ fn get_window_range(range_chunk: &str) -> Option<(Option<usize>, Option<usize>)>
 
 async fn build_single_range_response(
     filepath: &PathBuf,
-    encodings: Option<Vec<String>>,
+    encodings: &Vec<String>,
     ranges: Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     if 1 != ranges.len() {
@@ -170,15 +170,10 @@ async fn build_single_range_response(
 async fn compose_encoded_single_range_response(
     filepath: &PathBuf,
     content_type: &str,
-    encodings: &Option<Vec<String>>,
+    encodings: &Vec<String>,
     ranges: &Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let encds = match encodings {
-        Some(encds) => encds,
-        _ => return None,
-    };
-
-    for enc in encds {
+    for enc in encodings {
         if let Some(encoded_path) = add_extension(filepath, &enc) {
             if let Some(res) =
                 compose_single_range_response(&encoded_path, content_type, Some(enc), ranges).await

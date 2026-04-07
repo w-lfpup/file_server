@@ -43,18 +43,19 @@ pub async fn get_path(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf
 pub fn get_encodings(
     req: &Request<Incoming>,
     available_encodings: &AvailableEncodings,
-) -> Option<Vec<String>> {
+) -> Vec<String> {
+    let mut encodings = Vec::new();
+
     let accept_encoding_header = match req.headers().get(ACCEPT_ENCODING) {
         Some(enc) => enc,
-        _ => return None,
+        _ => return encodings,
     };
 
     let encoding_str = match accept_encoding_header.to_str() {
         Ok(s) => s,
-        _ => return None,
+        _ => return encodings,
     };
 
-    let mut encodings = Vec::new();
     for encoding in encoding_str.split(",") {
         let trimmed = encoding.trim();
         if available_encodings.encoding_is_available(trimmed) {
@@ -62,11 +63,7 @@ pub fn get_encodings(
         }
     }
 
-    if 0 < encodings.len() {
-        return Some(encodings);
-    }
-
-    None
+    return encodings;
 }
 
 // nightly API replacement

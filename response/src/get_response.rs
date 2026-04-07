@@ -44,7 +44,7 @@ pub async fn build_response(
 async fn build_req_path_response(
     req: &Request<Incoming>,
     directory: &PathBuf,
-    encodings: &Option<Vec<String>>,
+    encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let filepath = match get_path_from_request_url(req, directory).await {
         Some(fp) => fp,
@@ -57,7 +57,7 @@ async fn build_req_path_response(
 async fn build_not_found_response(
     directory: &PathBuf,
     filepath_404: &Option<PathBuf>,
-    encodings: &Option<Vec<String>>,
+    encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let fallback = match filepath_404 {
         Some(fb) => fb,
@@ -76,7 +76,7 @@ async fn build_not_found_response(
 async fn build_get_response(
     filepath: &PathBuf,
     status_code: StatusCode,
-    encodings: &Option<Vec<String>>,
+    encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let content_type = get_content_type(&filepath);
 
@@ -95,14 +95,9 @@ async fn compose_encoded_response(
     filepath: &PathBuf,
     content_type: &str,
     status_code: StatusCode,
-    encodings: &Option<Vec<String>>,
+    encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let encds = match encodings {
-        Some(encds) => encds,
-        _ => return None,
-    };
-
-    for enc in encds {
+    for enc in encodings {
         if let Some(encoded_path) = add_extension(filepath, &enc) {
             if let Some(res) =
                 compose_response(&encoded_path, content_type, status_code, Some(enc)).await
