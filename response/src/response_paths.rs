@@ -11,54 +11,33 @@ pub async fn get_path_from_request_url(
     req: &Request<Incoming>,
     directory: &PathBuf,
 ) -> Option<PathBuf> {
-    let uri_path = req.uri().path();
+    let mut uri_path = req.uri().path().to_string();
+    if uri_path.ends_with("/") {
+        uri_path.push_str("index.html");
+    }
 
     let stripped = match uri_path.strip_prefix("/") {
         Some(p) => p,
-        _ => uri_path,
+        _ => &uri_path,
     };
 
     get_path(directory, &PathBuf::from(stripped)).await
 }
 
 pub async fn get_path(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf> {
+    let joined = directory.join(filepath);
+
     // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
     // normalize lexically in nightly
-    let mut target_path = match fs::canonicalize(directory.join(&filepath)).await {
+    let target_path = match fs::canonicalize(joined).await {
         Ok(pb) => pb,
         _ => return None,
     };
 
-    // confirm path resides in directory
-    if !target_path.starts_with(directory) {
-        return None;
+    match target_path.starts_with(directory) {
+        true => Some(target_path),
+        _ => None,
     }
-
-    let metadata = match fs::metadata(&target_path).await {
-        Ok(md) => md,
-        _ => return None,
-    };
-
-    // if file return early
-    if metadata.is_file() {
-        return Some(target_path);
-    }
-
-    // if directory try an index.html file
-    if metadata.is_dir() {
-        target_path.push("index.html");
-
-        let updated_metadata = match fs::metadata(&target_path).await {
-            Ok(md) => md,
-            _ => return None,
-        };
-
-        if updated_metadata.is_file() {
-            return Some(target_path);
-        }
-    }
-
-    None
 }
 
 pub fn get_encodings(
