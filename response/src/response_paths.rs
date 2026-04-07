@@ -1,7 +1,6 @@
 use hyper::body::Incoming;
 use hyper::header::ACCEPT_ENCODING;
 use hyper::http::Request;
-use std::ffi::OsString;
 use std::path::PathBuf;
 use tokio::fs;
 
@@ -66,18 +65,14 @@ pub fn get_encodings(
     return encodings;
 }
 
-// nightly API replacement
-// https://doc.rust-lang.org/std/path/struct.Path.html#method.with_added_extension
-
-// Filepath must be a file, not a directory for this to work.
 pub fn add_extension(filepath: &PathBuf, encoding: &str) -> Option<PathBuf> {
     let enc_ext = match get_encoded_ext(encoding) {
         Some(enc) => enc,
         _ => return None,
     };
 
-    let mut fp_with_ext = OsString::from(filepath);
-    fp_with_ext.push(enc_ext);
+    let mut ext_path = filepath.clone();
+    ext_path.add_extension(enc_ext);
 
-    Some(PathBuf::from(fp_with_ext))
+    Some(ext_path)
 }

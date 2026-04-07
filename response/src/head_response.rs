@@ -17,14 +17,12 @@ pub async fn build_response(
 ) -> Result<BoxedResponse, hyper::http::Error> {
     if let Some(filepath) = get_path_from_request_url(&req, &res_params.directory).await {
         let content_type = get_content_type(&filepath);
-
         let encodings = get_encodings(&req, &res_params.available_encodings);
-        // encodings
+
         if let Some(res) = compose_encoded_response(&filepath, content_type, &encodings).await {
             return res;
         };
 
-        // origin target
         if let Some(res) = compose_response(&filepath, content_type, None).await {
             return res;
         }
@@ -64,10 +62,6 @@ async fn compose_response(
         Ok(m) => m,
         _ => return None,
     };
-
-    if !metadata.is_file() {
-        return None;
-    }
 
     let mut builder = Response::builder()
         .status(StatusCode::OK)
