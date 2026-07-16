@@ -11,7 +11,7 @@ use tokio_util::io::ReaderStream;
 use crate::content_type::get_content_type;
 use crate::last_resort_response;
 use crate::range_response;
-use crate::response_paths::{add_extension, get_encodings, get_path, get_path_from_request_url};
+use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
 use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
 
 pub async fn build_response(
@@ -31,13 +31,6 @@ pub async fn build_response(
         return res;
     };
 
-    // serve 404
-    if let Some(res) =
-        build_not_found_response(&res_params.directory, &res_params.filepath_404, &encodings).await
-    {
-        return res;
-    };
-
     last_resort_response::build_response(StatusCode::NOT_FOUND, NOT_FOUND_404)
 }
 
@@ -52,25 +45,6 @@ async fn build_req_path_response(
     };
 
     build_get_response(&filepath, StatusCode::OK, &encodings).await
-}
-
-async fn build_not_found_response(
-    directory: &PathBuf,
-    filepath_404: &Option<PathBuf>,
-    encodings: &Vec<String>,
-) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let fallback = match filepath_404 {
-        Some(fb) => fb,
-        _ => return None,
-    };
-
-    // file starts with directory
-    let filepath_404 = match get_path(directory, fallback).await {
-        Some(fb) => fb,
-        _ => return None,
-    };
-
-    build_get_response(&filepath_404, StatusCode::NOT_FOUND, &encodings).await
 }
 
 async fn build_get_response(

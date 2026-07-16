@@ -23,7 +23,7 @@ pub async fn get_path_from_request_url(
     get_path(directory, &PathBuf::from(stripped)).await
 }
 
-pub async fn get_path(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf> {
+async fn get_path(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf> {
     let joined = directory.join(filepath);
 
     // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
