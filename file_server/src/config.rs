@@ -10,8 +10,14 @@ pub struct Config {
     pub host_and_port: String,
     pub directory: PathBuf,
     pub content_encodings: Option<Vec<String>>,
-    pub filepath_404: Option<PathBuf>,
 }
+
+// env error
+// fs error
+// serde_json error
+// path error
+// no parent error
+// fs error
 
 impl Config {
     pub fn new() -> Result<Config, String> {
@@ -24,7 +30,6 @@ impl Config {
             host_and_port: "0.0.0.0:3000".to_string(),
             directory: curr_dir,
             content_encodings: None,
-            filepath_404: None,
         })
     }
 
@@ -60,33 +65,8 @@ impl Config {
             Err(e) => return Err(e.to_string()),
         };
 
-        if let Some(origin_404s) = config.filepath_404 {
-            config.filepath_404 =
-                match get_path_relative_to_origin(&target_directory, &origin_404s).await {
-                    Ok(pb) => Some(pb),
-                    Err(e) => return Err(e.to_string()),
-                };
-        }
-
         config.directory = target_directory;
 
         Ok(config)
     }
-}
-
-async fn get_path_relative_to_origin(
-    source_dir: &PathBuf,
-    filepath: &PathBuf,
-) -> Result<PathBuf, String> {
-    let target_path = source_dir.join(filepath);
-    let target_path_abs = match fs::canonicalize(target_path).await {
-        Ok(pb) => pb,
-        Err(e) => return Err(e.to_string()),
-    };
-
-    if target_path_abs.starts_with(source_dir) {
-        return Ok(target_path_abs);
-    }
-
-    Err("filepath_404 does not reside in source_dir".to_string())
 }

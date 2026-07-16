@@ -44,38 +44,25 @@ async fn build_req_path_response(
         _ => return None,
     };
 
-    build_get_response(&filepath, StatusCode::OK, &encodings).await
-}
-
-async fn build_get_response(
-    filepath: &PathBuf,
-    status_code: StatusCode,
-    encodings: &Vec<String>,
-) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let content_type = get_content_type(&filepath);
 
     // encodings
-    if let Some(res) =
-        compose_encoded_response(&filepath, content_type, status_code, &encodings).await
-    {
+    if let Some(res) = compose_encoded_response(&filepath, content_type, &encodings).await {
         return Some(res);
     };
 
     // origin target
-    compose_response(&filepath, content_type, status_code, None).await
+    compose_response(&filepath, content_type, None).await
 }
 
 async fn compose_encoded_response(
     filepath: &PathBuf,
     content_type: &str,
-    status_code: StatusCode,
     encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     for enc in encodings {
         if let Some(encoded_path) = add_extension(filepath, &enc) {
-            if let Some(res) =
-                compose_response(&encoded_path, content_type, status_code, Some(enc)).await
-            {
+            if let Some(res) = compose_response(&encoded_path, content_type, Some(enc)).await {
                 return Some(res);
             }
         };
@@ -87,7 +74,6 @@ async fn compose_encoded_response(
 async fn compose_response(
     filepath: &PathBuf,
     content_type: &str,
-    status_code: StatusCode,
     content_encoding: Option<&str>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let metadata = match fs::metadata(filepath).await {
@@ -105,7 +91,7 @@ async fn compose_response(
     };
 
     let mut builder = Response::builder()
-        .status(status_code)
+        .status(StatusCode::OK)
         .header(CONTENT_TYPE, content_type)
         .header(CONTENT_LENGTH, metadata.len());
 
