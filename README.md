@@ -104,6 +104,13 @@ Multipart ranges are not currently supported.
 
 They're a little more strenuous, tend to hog memory, and are difficult to deliver efficiently. Sorry.
 
+Valid range sytanxes:
+```
+<unit>=<range-start>-
+<unit>=<range-start>-<range-end>
+<unit>=-<suffix-length>
+```
+
 ## License
 
 `file_server` is released under the BSD 3-Clause License.

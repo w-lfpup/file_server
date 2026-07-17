@@ -18,18 +18,10 @@ use crate::type_flyweight::{
     BoxedResponse, ResponseParams, BAD_REQUEST_400, NOT_FOUND_404, RANGE_NOT_SATISFIABLE_416,
 };
 
-// Range: <unit>=<range-start>-
-// Range: <unit>=<range-start>-<range-end>
-// Range: <unit>=-<suffix-length>
-
-// multi range requests require an entirely different strategy
-// Range: <unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
-
 pub async fn build_response(
     req: &Request<IncomingBody>,
     res_params: &ResponseParams,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    // bail if no range header
     let range_header = match get_range_header(req) {
         Some(rh) => rh,
         _ => return None,
