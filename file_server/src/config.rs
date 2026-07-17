@@ -12,13 +12,6 @@ pub struct Config {
     pub content_encodings: Option<Vec<String>>,
 }
 
-// env error
-// fs error
-// serde_json error
-// path error
-// no parent error
-// fs error
-
 impl Config {
     pub fn new() -> Result<Config, String> {
         let curr_dir = match env::current_dir() {

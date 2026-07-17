@@ -45,8 +45,7 @@ A valid [JSON configuration file](./demo/file_server_config_example.json) matche
 {
     "directory": "./",
     "host_and_port": "127.0.0.1:4000",
-    "content_encodings": ["gzip", "deflate", "br", "zstd"],
-    "filepath_404": "./404.html"
+    "content_encodings": ["gzip", "deflate", "br", "zstd"]
 }
 ```
 
@@ -83,7 +82,7 @@ index.html.gz	# gzipped file
 
 `File_server` will send the encoded file, if available. Otherwise, it serves the source file.
 
-### No dynamic encoding support
+### Dynamic encoding not supported
 
 `File_server` does not encode or zip files ever.
 
@@ -103,8 +102,8 @@ And the first 6 bytes of `index.html` will be delivered.
 
 Multipart ranges are not currently supported.
 
-Multipart ranges are memory hogs and difficult to deliver efficiently without abusing memory resources.
+They're a little more strenuous, tend to hog memory, and are difficult to deliver efficiently. Sorry.
 
 ## License
 
-`File_server` is released under the BSD 3-Clause License.
+`file_server` is released under the BSD 3-Clause License.
