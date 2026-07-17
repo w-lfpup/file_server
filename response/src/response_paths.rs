@@ -20,13 +20,7 @@ pub async fn get_path_from_request_url(
         _ => &uri_path,
     };
 
-    get_path(directory, &PathBuf::from(stripped)).await
-}
-
-async fn get_path(directory: &PathBuf, filepath: &PathBuf) -> Option<PathBuf> {
-    let joined = directory.join(filepath);
-
-    // TODO(): update algorithm
+    let joined = directory.join(PathBuf::from(stripped));
 
     // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
     // normalize lexically in nightly
