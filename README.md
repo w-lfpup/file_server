@@ -51,7 +51,7 @@ A valid [JSON configuration file](./demo/file_server_config_example.json) matche
 
 Filepaths can be relative or absolute. Relative paths are "relative from" the filepath of the JSON configuration file.
 
-The `content_encodings` and `filepath_404` properties are optional.
+The `content_encodings` property is optional.
 
 #### Run with configuration
 
