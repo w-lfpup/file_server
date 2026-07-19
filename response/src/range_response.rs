@@ -15,7 +15,7 @@ use crate::content_type::get_content_type;
 use crate::last_resort_response;
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
 use crate::type_flyweight::{
-    BoxedResponse, ResponseParams, BAD_REQUEST_400, NOT_FOUND_404, RANGE_NOT_SATISFIABLE_416,
+    BoxedResponse, ResponseParams, NOT_FOUND_404, RANGE_NOT_SATISFIABLE_416,
 };
 
 pub async fn build_response(
@@ -37,11 +37,6 @@ pub async fn build_response(
                 return Some(response);
             }
         };
-
-        return Some(last_resort_response::build_response(
-            StatusCode::RANGE_NOT_SATISFIABLE,
-            RANGE_NOT_SATISFIABLE_416,
-        ));
     }
 
     Some(last_resort_response::build_response(
@@ -165,13 +160,16 @@ async fn compose_encoded_single_range_response(
     ranges: &Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     for enc in encodings {
-        if let Some(encoded_path) = add_extension(filepath, &enc) {
-            if let Some(res) =
-                compose_single_range_response(&encoded_path, content_type, Some(enc), ranges).await
-            {
-                return Some(res);
-            }
+        let encoded_path = match add_extension(filepath, &enc) {
+            Some(enc_pth) => enc_pth,
+            _ => continue,
         };
+
+        if let Some(res) =
+            compose_single_range_response(&encoded_path, content_type, Some(enc), ranges).await
+        {
+            return Some(res);
+        }
     }
 
     None
@@ -197,8 +195,8 @@ async fn compose_single_range_response(
         Some(se) => se,
         _ => {
             return Some(last_resort_response::build_response(
-                StatusCode::BAD_REQUEST,
-                BAD_REQUEST_400,
+                StatusCode::RANGE_NOT_SATISFIABLE,
+                RANGE_NOT_SATISFIABLE_416,
             ))
         }
     };

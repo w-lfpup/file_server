@@ -61,11 +61,14 @@ async fn compose_encoded_response(
     encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     for enc in encodings {
-        if let Some(encoded_path) = add_extension(filepath, &enc) {
-            if let Some(res) = compose_response(&encoded_path, content_type, Some(enc)).await {
-                return Some(res);
-            }
+        let encoded_path = match add_extension(filepath, &enc) {
+            Some(enc_pth) => enc_pth,
+            _ => continue,
         };
+
+        if let Some(res) = compose_response(&encoded_path, content_type, Some(enc)).await {
+            return Some(res);
+        }
     }
 
     None
