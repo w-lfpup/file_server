@@ -37,17 +37,16 @@ async fn compose_encoded_response(
     content_encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     for content_encoding in content_encodings {
-        if let Some(encoded_path) = add_extension(filepath, &content_encoding) {
-            if let Some(res) = compose_response(
-                &encoded_path,
-                content_type,
-                Some(content_encoding.to_string()),
-            )
-            .await
-            {
-                return Some(res);
-            }
+        let encoded_path = match add_extension(filepath, &content_encoding) {
+            Some(enc_pth) => enc_pth,
+            _ => continue,
         };
+
+        if let Some(res) =
+            compose_response(&encoded_path, content_type, Some(content_encoding)).await
+        {
+            return Some(res);
+        }
     }
 
     None
@@ -56,7 +55,7 @@ async fn compose_encoded_response(
 async fn compose_response(
     filepath: &PathBuf,
     content_type: &str,
-    content_encoding: Option<String>,
+    content_encoding: Option<&str>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let metadata = match fs::metadata(filepath).await {
         Ok(m) => m,

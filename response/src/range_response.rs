@@ -27,12 +27,14 @@ pub async fn build_response(
         _ => return None,
     };
 
+    // flatten this
     if let Some(filepath) = get_path_from_request_url(req, &res_params.directory).await {
         if let Some(ranges) = get_ranges(&range_header) {
             let encodings = get_encodings(req, &res_params.available_encodings);
 
-            if let Some(res) = build_single_range_response(&filepath, &encodings, ranges).await {
-                return Some(res);
+            if let Some(response) = build_single_range_response(&filepath, &encodings, ranges).await
+            {
+                return Some(response);
             }
         };
 
@@ -144,10 +146,6 @@ async fn build_single_range_response(
     encodings: &Vec<String>,
     ranges: Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    if 1 != ranges.len() {
-        return None;
-    };
-
     let content_type = get_content_type(&filepath);
 
     if let Some(res) =
@@ -218,9 +216,6 @@ async fn compose_single_range_response(
     buffer.resize(end - start, 0);
 
     let content_range_header = build_content_range_header_str(start, end, size);
-    let reader_stream = ReaderStream::with_capacity(file, size);
-    let stream_body = StreamBody::new(reader_stream.map_ok(Frame::data));
-    let boxed_body = stream_body.boxed();
 
     let mut builder = Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
@@ -232,7 +227,11 @@ async fn compose_single_range_response(
         builder = builder.header(CONTENT_ENCODING, enc);
     }
 
-    return Some(builder.body(boxed_body));
+    let reader_stream = ReaderStream::with_capacity(file, size);
+    let stream_body = StreamBody::new(reader_stream.map_ok(Frame::data));
+    let boxed_body = stream_body.boxed();
+
+    Some(builder.body(boxed_body))
 }
 
 fn get_start_and_end(
@@ -249,7 +248,7 @@ fn get_start_and_end(
         _ => return None,
     };
 
-    if start <= end && end <= size {
+    if start <= end && (end - start) <= size {
         return Some((start, end));
     }
 

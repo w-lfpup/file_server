@@ -4,8 +4,8 @@ use std::env;
 use std::path::PathBuf;
 use tokio::net::TcpListener;
 
-mod errors;
 mod config;
+mod errors;
 mod service;
 
 use config::Config;
