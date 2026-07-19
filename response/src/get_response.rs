@@ -23,10 +23,8 @@ pub async fn build_response(
         return res;
     }
 
-    // fallback to file response
     let encodings = get_encodings(&req, &res_params.available_encodings);
 
-    // serve file
     if let Some(res) = build_req_path_response(&req, &res_params.directory, &encodings).await {
         return res;
     };
@@ -46,12 +44,10 @@ async fn build_req_path_response(
 
     let content_type = get_content_type(&filepath);
 
-    // encodings
     if let Some(res) = compose_encoded_response(&filepath, content_type, &encodings).await {
         return Some(res);
     };
 
-    // origin target
     compose_response(&filepath, content_type, None).await
 }
 
@@ -61,7 +57,7 @@ async fn compose_encoded_response(
     encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     for enc in encodings {
-        let encoded_path = match add_extension(filepath, &enc) {
+        let encoded_path = match add_extension(filepath, enc) {
             Some(enc_pth) => enc_pth,
             _ => continue,
         };
@@ -79,7 +75,12 @@ async fn compose_response(
     content_type: &str,
     content_encoding: Option<&str>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let metadata = match fs::metadata(filepath).await {
+    let file = match fs::File::open(filepath).await {
+        Ok(m) => m,
+        _ => return None,
+    };
+
+    let metadata = match file.metadata().await {
         Ok(m) => m,
         _ => return None,
     };
@@ -87,11 +88,6 @@ async fn compose_response(
     if !metadata.is_file() {
         return None;
     }
-
-    let file = match fs::File::open(filepath).await {
-        Ok(m) => m,
-        _ => return None,
-    };
 
     let mut builder = Response::builder()
         .status(StatusCode::OK)

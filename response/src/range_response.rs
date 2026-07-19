@@ -181,6 +181,11 @@ async fn compose_single_range_response(
     content_encoding: Option<&str>,
     ranges: &Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
+    let mut file = match File::open(filepath).await {
+        Ok(m) => m,
+        _ => return None,
+    };
+
     let metadata = match fs::metadata(filepath).await {
         Ok(m) => m,
         _ => return None,
@@ -199,11 +204,6 @@ async fn compose_single_range_response(
                 RANGE_NOT_SATISFIABLE_416,
             ))
         }
-    };
-
-    let mut file = match File::open(filepath).await {
-        Ok(m) => m,
-        _ => return None,
     };
 
     if let Err(_err) = file.seek(SeekFrom::Start(start.clone() as u64)).await {
@@ -246,7 +246,7 @@ fn get_start_and_end(
         _ => return None,
     };
 
-    if start <= end && (end - start) <= size {
+    if start <= end && end <= size {
         return Some((start, end));
     }
 
