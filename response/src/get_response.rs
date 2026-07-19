@@ -14,6 +14,7 @@ use crate::range_response;
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
 use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
 
+// check for ?serialize_as="json"
 pub async fn build_response(
     req: Request<Incoming>,
     res_params: ResponseParams,
