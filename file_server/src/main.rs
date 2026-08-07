@@ -9,9 +9,10 @@ mod errors;
 mod service;
 
 use config::Config;
+use errors::Error;
 
 #[tokio::main]
-async fn main() -> Result<(), String> {
+async fn main() -> Result<(), Error> {
     let conf = match get_config().await {
         Ok(c) => c,
         Err(e) => return Err(e),
@@ -19,7 +20,7 @@ async fn main() -> Result<(), String> {
 
     let listener = match TcpListener::bind(&conf.host_and_port).await {
         Ok(lstnr) => lstnr,
-        Err(e) => return Err(e.to_string()),
+        Err(e) => return Err(Error::Io(e)),
     };
 
     println!("file_server: {}", conf.host_and_port);
@@ -29,7 +30,7 @@ async fn main() -> Result<(), String> {
     loop {
         let (stream, _remote_address) = match listener.accept().await {
             Ok(strm) => strm,
-            Err(e) => return Err(e.to_string()),
+            Err(e) => return Err(Error::Io(e)),
         };
 
         let io = TokioIo::new(stream);
@@ -46,7 +47,7 @@ async fn main() -> Result<(), String> {
     }
 }
 
-async fn get_config() -> Result<Config, String> {
+async fn get_config() -> Result<Config, Error> {
     match env::args().nth(1) {
         Some(conf_path_arg) => {
             let conf_pathbuf = PathBuf::from(conf_path_arg);
