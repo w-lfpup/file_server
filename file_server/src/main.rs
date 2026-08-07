@@ -30,7 +30,10 @@ async fn main() -> Result<(), Error> {
     loop {
         let (stream, _remote_address) = match listener.accept().await {
             Ok(strm) => strm,
-            Err(e) => return Err(Error::Io(e)),
+            Err(e) => {
+                println!("Server connection error:\n{}", e);
+                continue;
+            }
         };
 
         let io = TokioIo::new(stream);
@@ -41,7 +44,7 @@ async fn main() -> Result<(), Error> {
                 .serve_connection(io, svc)
                 .await
             {
-                println!("server connection error:\n{}", e);
+                println!("service error:\n{}", e);
             }
         });
     }

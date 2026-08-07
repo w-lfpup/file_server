@@ -29,7 +29,6 @@ impl Config {
     }
 
     pub async fn try_from(filepath: &PathBuf) -> Result<Config, Error> {
-        // see if config exists
         let config_json = match fs::read_to_string(filepath).await {
             Ok(r) => r,
             Err(e) => return Err(Error::Io(e)),
