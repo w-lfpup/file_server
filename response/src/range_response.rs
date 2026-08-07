@@ -15,39 +15,28 @@ use crate::content_type::get_content_type;
 use crate::last_resort_response;
 use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
 use crate::type_flyweight::{
-    BoxedResponse, ResponseParams, BAD_REQUEST_400, NOT_FOUND_404, RANGE_NOT_SATISFIABLE_416,
+    BoxedResponse, ResponseParams, NOT_FOUND_404, RANGE_NOT_SATISFIABLE_416,
 };
-
-// Range: <unit>=<range-start>-
-// Range: <unit>=<range-start>-<range-end>
-// Range: <unit>=-<suffix-length>
-
-// multi range requests require an entirely different strategy
-// Range: <unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
 
 pub async fn build_response(
     req: &Request<IncomingBody>,
     res_params: &ResponseParams,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    // bail if no range header
     let range_header = match get_range_header(req) {
         Some(rh) => rh,
         _ => return None,
     };
 
+    // flatten this
     if let Some(filepath) = get_path_from_request_url(req, &res_params.directory).await {
         if let Some(ranges) = get_ranges(&range_header) {
             let encodings = get_encodings(req, &res_params.available_encodings);
 
-            if let Some(res) = build_single_range_response(&filepath, &encodings, ranges).await {
-                return Some(res);
+            if let Some(response) = build_single_range_response(&filepath, &encodings, ranges).await
+            {
+                return Some(response);
             }
         };
-
-        return Some(last_resort_response::build_response(
-            StatusCode::RANGE_NOT_SATISFIABLE,
-            RANGE_NOT_SATISFIABLE_416,
-        ));
     }
 
     Some(last_resort_response::build_response(
@@ -152,10 +141,6 @@ async fn build_single_range_response(
     encodings: &Vec<String>,
     ranges: Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    if 1 != ranges.len() {
-        return None;
-    };
-
     let content_type = get_content_type(&filepath);
 
     if let Some(res) =
@@ -175,13 +160,16 @@ async fn compose_encoded_single_range_response(
     ranges: &Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     for enc in encodings {
-        if let Some(encoded_path) = add_extension(filepath, &enc) {
-            if let Some(res) =
-                compose_single_range_response(&encoded_path, content_type, Some(enc), ranges).await
-            {
-                return Some(res);
-            }
+        let encoded_path = match add_extension(filepath, &enc) {
+            Some(enc_pth) => enc_pth,
+            _ => continue,
         };
+
+        if let Some(res) =
+            compose_single_range_response(&encoded_path, content_type, Some(enc), ranges).await
+        {
+            return Some(res);
+        }
     }
 
     None
@@ -193,6 +181,11 @@ async fn compose_single_range_response(
     content_encoding: Option<&str>,
     ranges: &Vec<(Option<usize>, Option<usize>)>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
+    let mut file = match File::open(filepath).await {
+        Ok(m) => m,
+        _ => return None,
+    };
+
     let metadata = match fs::metadata(filepath).await {
         Ok(m) => m,
         _ => return None,
@@ -207,15 +200,10 @@ async fn compose_single_range_response(
         Some(se) => se,
         _ => {
             return Some(last_resort_response::build_response(
-                StatusCode::BAD_REQUEST,
-                BAD_REQUEST_400,
+                StatusCode::RANGE_NOT_SATISFIABLE,
+                RANGE_NOT_SATISFIABLE_416,
             ))
         }
-    };
-
-    let mut file = match File::open(filepath).await {
-        Ok(m) => m,
-        _ => return None,
     };
 
     if let Err(_err) = file.seek(SeekFrom::Start(start.clone() as u64)).await {
@@ -226,9 +214,6 @@ async fn compose_single_range_response(
     buffer.resize(end - start, 0);
 
     let content_range_header = build_content_range_header_str(start, end, size);
-    let reader_stream = ReaderStream::with_capacity(file, size);
-    let stream_body = StreamBody::new(reader_stream.map_ok(Frame::data));
-    let boxed_body = stream_body.boxed();
 
     let mut builder = Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
@@ -240,7 +225,11 @@ async fn compose_single_range_response(
         builder = builder.header(CONTENT_ENCODING, enc);
     }
 
-    return Some(builder.body(boxed_body));
+    let reader_stream = ReaderStream::with_capacity(file, size);
+    let stream_body = StreamBody::new(reader_stream.map_ok(Frame::data));
+    let boxed_body = stream_body.boxed();
+
+    Some(builder.body(boxed_body))
 }
 
 fn get_start_and_end(

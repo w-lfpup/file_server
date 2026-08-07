@@ -11,9 +11,10 @@ use tokio_util::io::ReaderStream;
 use crate::content_type::get_content_type;
 use crate::last_resort_response;
 use crate::range_response;
-use crate::response_paths::{add_extension, get_encodings, get_path, get_path_from_request_url};
+use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
 use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
 
+// check for ?serialize_as="json"
 pub async fn build_response(
     req: Request<Incoming>,
     res_params: ResponseParams,
@@ -23,18 +24,9 @@ pub async fn build_response(
         return res;
     }
 
-    // fallback to file response
     let encodings = get_encodings(&req, &res_params.available_encodings);
 
-    // serve file
     if let Some(res) = build_req_path_response(&req, &res_params.directory, &encodings).await {
-        return res;
-    };
-
-    // serve 404
-    if let Some(res) =
-        build_not_found_response(&res_params.directory, &res_params.filepath_404, &encodings).await
-    {
         return res;
     };
 
@@ -51,60 +43,29 @@ async fn build_req_path_response(
         _ => return None,
     };
 
-    build_get_response(&filepath, StatusCode::OK, &encodings).await
-}
-
-async fn build_not_found_response(
-    directory: &PathBuf,
-    filepath_404: &Option<PathBuf>,
-    encodings: &Vec<String>,
-) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let fallback = match filepath_404 {
-        Some(fb) => fb,
-        _ => return None,
-    };
-
-    // file starts with directory
-    let filepath_404 = match get_path(directory, fallback).await {
-        Some(fb) => fb,
-        _ => return None,
-    };
-
-    build_get_response(&filepath_404, StatusCode::NOT_FOUND, &encodings).await
-}
-
-async fn build_get_response(
-    filepath: &PathBuf,
-    status_code: StatusCode,
-    encodings: &Vec<String>,
-) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let content_type = get_content_type(&filepath);
 
-    // encodings
-    if let Some(res) =
-        compose_encoded_response(&filepath, content_type, status_code, &encodings).await
-    {
+    if let Some(res) = compose_encoded_response(&filepath, content_type, &encodings).await {
         return Some(res);
     };
 
-    // origin target
-    compose_response(&filepath, content_type, status_code, None).await
+    compose_response(&filepath, content_type, None).await
 }
 
 async fn compose_encoded_response(
     filepath: &PathBuf,
     content_type: &str,
-    status_code: StatusCode,
     encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     for enc in encodings {
-        if let Some(encoded_path) = add_extension(filepath, &enc) {
-            if let Some(res) =
-                compose_response(&encoded_path, content_type, status_code, Some(enc)).await
-            {
-                return Some(res);
-            }
+        let encoded_path = match add_extension(filepath, enc) {
+            Some(enc_pth) => enc_pth,
+            _ => continue,
         };
+
+        if let Some(res) = compose_response(&encoded_path, content_type, Some(enc)).await {
+            return Some(res);
+        }
     }
 
     None
@@ -113,10 +74,14 @@ async fn compose_encoded_response(
 async fn compose_response(
     filepath: &PathBuf,
     content_type: &str,
-    status_code: StatusCode,
     content_encoding: Option<&str>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let metadata = match fs::metadata(filepath).await {
+    let file = match fs::File::open(filepath).await {
+        Ok(m) => m,
+        _ => return None,
+    };
+
+    let metadata = match file.metadata().await {
         Ok(m) => m,
         _ => return None,
     };
@@ -125,13 +90,8 @@ async fn compose_response(
         return None;
     }
 
-    let file = match fs::File::open(filepath).await {
-        Ok(m) => m,
-        _ => return None,
-    };
-
     let mut builder = Response::builder()
-        .status(status_code)
+        .status(StatusCode::OK)
         .header(CONTENT_TYPE, content_type)
         .header(CONTENT_LENGTH, metadata.len());
 

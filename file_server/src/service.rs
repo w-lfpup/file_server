@@ -10,7 +10,7 @@ use crate::config::Config;
     It should work with hyper responses across
     different libraries and dependencies.
 */
-use response::{build_response, BoxedResponse, ResponseParams};
+use response::{compose_response, BoxedResponse, ResponseParams};
 
 #[derive(Clone, Debug)]
 pub struct Svc {
@@ -20,11 +20,7 @@ pub struct Svc {
 impl Svc {
     pub fn from(config: Config) -> Svc {
         Svc {
-            response_params: ResponseParams::from(
-                config.directory,
-                config.filepath_404,
-                config.content_encodings,
-            ),
+            response_params: ResponseParams::from(config.directory, config.content_encodings),
         }
     }
 }
@@ -37,6 +33,6 @@ impl Service<Request<IncomingBody>> for Svc {
     fn call(&self, req: Request<IncomingBody>) -> Self::Future {
         let response_params = self.response_params.clone();
 
-        Box::pin(async move { build_response(req, response_params).await })
+        Box::pin(async move { compose_response(req, response_params).await })
     }
 }

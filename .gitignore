@@ -19,3 +19,4 @@ Cargo.lock
 
 *.json
 !file_server_config_example.json
+.DS_Store

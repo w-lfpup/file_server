@@ -8,7 +8,7 @@ use crate::head_response;
 use crate::last_resort_response;
 use crate::type_flyweight::{BoxedResponse, ResponseParams, METHOD_NOT_ALLOWED_405};
 
-pub async fn build_response(
+pub async fn compose_response(
     req: Request<Incoming>,
     res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
