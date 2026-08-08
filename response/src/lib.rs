@@ -6,6 +6,7 @@ mod last_resort_response;
 mod range_response;
 mod response_paths;
 mod responses;
+mod serialize_details;
 mod type_flyweight;
 
 pub use crate::responses::compose_response;
