@@ -18,7 +18,7 @@ use serde_json;
 use crate::content_type::get_content_type;
 use crate::last_resort_response;
 use crate::range_response;
-use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
+use crate::response_paths::{add_extension, get_encodings};
 use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -74,12 +74,14 @@ pub async fn build_response(
         Some(pth) => pth,
         _ => return None,
     };
+	println!("{:?}", req_path);
 
     let metadata = match fs::metadata(&req_path).await {
         Ok(m) => m,
         // return 404
         _ => return None,
     };
+	println!("{:?}", metadata);
 
     if metadata.is_symlink() {
         // 404
@@ -89,8 +91,7 @@ pub async fn build_response(
     // this could just be one function that splits into two later
     let details = match metadata.is_dir() {
         true => {
-            // build_directory_entry(&metadata, &req_path, &res_params.directory).await
-            None
+            build_directory_entry(&metadata, &req_path, &res_params.directory).await
         }
         _ => build_file_entry(&metadata, &req_path, &res_params.directory),
     };
@@ -139,13 +140,24 @@ async fn build_directory_entry(
         _ => return None,
     };
 
-    while let Ok(opt_entry) = entries.next_entry().await {
-        if let Some(entry) = opt_entry {
-            details
-                .entries
-                .push(create_entry_details(metadata, req_path, base_path));
-        }
-    }
+	while true {
+		if let Ok(opt_entry) = entries.next_entry().await {
+			if let Some(entry) = opt_entry {
+				details
+					.entries
+					.push(create_entry_details(metadata, req_path, base_path));
+				continue;
+			}
+    	}
+		break;
+	}
+    // while let Ok(opt_entry) = entries.next_entry().await {
+    //     if let Some(entry) = opt_entry {
+    //         details
+    //             .entries
+    //             .push(create_entry_details(metadata, req_path, base_path));
+    //     }
+    // }
 
     Some(details)
 }
@@ -208,4 +220,30 @@ async fn compose_response(details: &Details) -> Option<Result<BoxedResponse, hyp
                     .boxed(),
             ),
     )
+}
+
+pub async fn get_path_from_request_url(
+    req: &Request<Incoming>,
+    directory: &PathBuf,
+) -> Option<PathBuf> {
+    let mut uri_path = req.uri().path().to_string();
+    let stripped = match req.uri().path().strip_prefix("/") {
+        Some(p) => p,
+        _ => &uri_path,
+    };
+
+    let joined = directory.join(PathBuf::from(stripped));
+
+    // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
+    // normalize lexically in nightly
+    let target_path = match fs::canonicalize(joined).await {
+        Ok(pb) => pb,
+        _ => return None,
+    };
+
+	println!("{:?}", target_path);
+    match target_path.starts_with(directory) {
+        true => Some(target_path),
+        _ => None,
+    }
 }
