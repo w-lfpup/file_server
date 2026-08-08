@@ -9,11 +9,11 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::Metadata;
 use std::path::PathBuf;
-use std::time::SystemTime;
 use tokio::fs;
 use tokio_util::io::ReaderStream;
 // use tokio_stream::{StreamExt, wrappers::ReadDirStream};
 use serde_json;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::content_type::get_content_type;
 use crate::last_resort_response;
@@ -74,14 +74,14 @@ pub async fn build_response(
         Some(pth) => pth,
         _ => return None,
     };
-	println!("{:?}", req_path);
+    println!("{:?}", req_path);
 
     let metadata = match fs::metadata(&req_path).await {
         Ok(m) => m,
         // return 404
         _ => return None,
     };
-	println!("{:?}", metadata);
+    println!("{:?}", metadata);
 
     if metadata.is_symlink() {
         // 404
@@ -90,9 +90,7 @@ pub async fn build_response(
 
     // this could just be one function that splits into two later
     let details = match metadata.is_dir() {
-        true => {
-            build_directory_entry(&metadata, &req_path, &res_params.directory).await
-        }
+        true => build_directory_entry(&metadata, &req_path, &res_params.directory).await,
         _ => build_file_entry(&metadata, &req_path, &res_params.directory),
     };
 
@@ -140,17 +138,17 @@ async fn build_directory_entry(
         _ => return None,
     };
 
-	while true {
-		if let Ok(opt_entry) = entries.next_entry().await {
-			if let Some(entry) = opt_entry {
-				details
-					.entries
-					.push(create_entry_details(metadata, req_path, base_path));
-				continue;
-			}
-    	}
-		break;
-	}
+    while true {
+        if let Ok(opt_entry) = entries.next_entry().await {
+            if let Some(entry) = opt_entry {
+                details
+                    .entries
+                    .push(create_entry_details(metadata, req_path, base_path));
+                continue;
+            }
+        }
+        break;
+    }
     // while let Ok(opt_entry) = entries.next_entry().await {
     //     if let Some(entry) = opt_entry {
     //         details
@@ -172,6 +170,8 @@ fn create_entry_details(
         None => "".to_string(),
     };
 
+    // Some(created.duration_since(UNIX_EPOCH)
+    // since_the_epoch.as_millis()
     let created_at = match metadata.created() {
         Ok(created) => Some(created),
         _ => None,
@@ -241,7 +241,7 @@ pub async fn get_path_from_request_url(
         _ => return None,
     };
 
-	println!("{:?}", target_path);
+    println!("{:?}", target_path);
     match target_path.starts_with(directory) {
         true => Some(target_path),
         _ => None,
