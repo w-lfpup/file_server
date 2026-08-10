@@ -23,8 +23,6 @@ async fn main() -> Result<(), Error> {
         Err(e) => return Err(Error::Io(e)),
     };
 
-    println!("file_server: {}", conf.host_and_port);
-
     let svc = service::Svc::from(conf);
 
     loop {
