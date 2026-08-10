@@ -23,7 +23,7 @@ use crate::range_response;
 use crate::response_paths::{add_extension, get_encodings};
 use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
 
-// Need to jouge up for some clean json stuff, option should be property exists or no not NUL
+// Need to jouge up for some clean json stuff, option should be property exists or no not NULL
 #[derive(Clone, Serialize, Deserialize, Debug)]
 struct EntryDetails {
     is_dir: bool,
@@ -87,11 +87,10 @@ async fn get_details(req: &Request<Incoming>, res_params: &ResponseParams) -> Op
 
     let metadata = match fs::metadata(&req_path).await {
         Ok(m) => m,
-        // return 404
         _ => return None,
     };
 
-    // if symlink? return 404?
+    // if symlink?
 
     match metadata.is_dir() {
         true => build_directory_entry(&metadata, &req_path, &res_params.directory).await,
@@ -135,10 +134,6 @@ fn build_file_entry(
         entry,
         entries: Vec::new(),
     };
-
-    details
-        .entries
-        .push(create_entry_details(metadata, req_path, base_path));
 
     Some(details)
 }
@@ -208,7 +203,6 @@ fn create_entry_details(metadata: &Metadata, req_path: &Path, base_path: &PathBu
 async fn compose_response(
     details: &FileDetails,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    // details to string
     let body = match serde_json::to_string(details) {
         Ok(bdy) => bdy,
         Err(_) => return None,
