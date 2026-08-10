@@ -72,13 +72,3 @@ pub fn add_extension(filepath: &PathBuf, encoding: &str) -> Option<PathBuf> {
 
     Some(ext_path)
 }
-
-fn normalize_lexically() {
-    // split string by "/"
-    // start with "/"
-    // if "/" preceeds a "/" continue
-    //      else add a "/"
-    // if "." skip
-    // if ".." pop
-    // if more than two dots? valid legal
-}

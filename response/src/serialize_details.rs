@@ -1,31 +1,24 @@
-use futures_util::TryStreamExt;
-use http_body_util::{BodyExt, Full, StreamBody};
-use hyper::body::{Frame, Incoming};
-use hyper::header::{HeaderValue, CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE};
+use http_body_util::{BodyExt, Full};
+use hyper::body::Incoming;
+use hyper::header::{HeaderValue, CONTENT_TYPE};
 use hyper::http::{Request, Response};
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
-use std::ffi::OsString;
-use std::fs::DirEntry;
 use std::fs::Metadata;
 use std::io::Error as IoError;
 use std::path::Path;
 use std::path::PathBuf;
-use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
+use std::time::SystemTime;
 use tokio::fs;
-use tokio_util::io::ReaderStream;
 
-use crate::content_type::get_content_type;
 use crate::last_resort_response;
-use crate::range_response;
-use crate::response_paths::{add_extension, get_encodings};
 use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
 
 // Need to jouge up for some clean json stuff, option should be property exists or no not NULL
 #[derive(Clone, Serialize, Deserialize, Debug)]
-struct EntryDetails {
+struct FileDetails {
     is_dir: bool,
     file_name: String,
     url_path: PathBuf,
@@ -36,9 +29,9 @@ struct EntryDetails {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-struct FileDetails {
-    entry: EntryDetails,
-    entries: Vec<EntryDetails>,
+struct EntryDetails {
+    details: FileDetails,
+    entries: Vec<FileDetails>,
 }
 
 pub async fn build_response(
@@ -79,7 +72,7 @@ pub async fn build_response(
     ))
 }
 
-async fn get_details(req: &Request<Incoming>, res_params: &ResponseParams) -> Option<FileDetails> {
+async fn get_details(req: &Request<Incoming>, res_params: &ResponseParams) -> Option<EntryDetails> {
     let req_path = match get_path_from_request_url(req, &res_params.directory).await {
         Some(pth) => pth,
         _ => return None,
@@ -102,7 +95,7 @@ async fn get_path_from_request_url(
     req: &Request<Incoming>,
     directory: &PathBuf,
 ) -> Option<PathBuf> {
-    let mut uri_path = req.uri().path().to_string();
+    let uri_path = req.uri().path().to_string();
     let stripped = match req.uri().path().strip_prefix("/") {
         Some(p) => p,
         _ => &uri_path,
@@ -127,26 +120,24 @@ fn build_file_entry(
     metadata: &Metadata,
     req_path: &PathBuf,
     base_path: &PathBuf,
-) -> Option<FileDetails> {
-    let entry = create_entry_details(metadata, req_path, base_path);
+) -> Option<EntryDetails> {
+    let details = create_entry_details(metadata, req_path, base_path);
 
-    let mut details = FileDetails {
-        entry,
+    Some(EntryDetails {
+        details,
         entries: Vec::new(),
-    };
-
-    Some(details)
+    })
 }
 
 async fn build_directory_entry(
     metadata: &Metadata,
     req_path: &PathBuf,
     base_path: &PathBuf,
-) -> Option<FileDetails> {
-    let entry = create_entry_details(metadata, req_path, base_path);
+) -> Option<EntryDetails> {
+    let details = create_entry_details(metadata, req_path, base_path);
 
-    let mut details = FileDetails {
-        entry,
+    let mut entry_details = EntryDetails {
+        details,
         entries: Vec::new(),
     };
 
@@ -162,19 +153,20 @@ async fn build_directory_entry(
                 _ => continue,
             };
 
-            details
+            entry_details
                 .entries
                 .push(create_entry_details(&metadata, &entry.path(), base_path));
+
             continue;
         }
 
         break;
     }
 
-    Some(details)
+    Some(entry_details)
 }
 
-fn create_entry_details(metadata: &Metadata, req_path: &Path, base_path: &PathBuf) -> EntryDetails {
+fn create_entry_details(metadata: &Metadata, req_path: &Path, base_path: &PathBuf) -> FileDetails {
     let file_name = match req_path.file_name() {
         Some(flnm) => flnm.to_string_lossy().to_string(),
         None => "".to_string(),
@@ -189,7 +181,7 @@ fn create_entry_details(metadata: &Metadata, req_path: &Path, base_path: &PathBu
         Err(_) => PathBuf::from(""),
     };
 
-    EntryDetails {
+    FileDetails {
         is_dir: metadata.is_dir(),
         file_name,
         url_path,
@@ -201,7 +193,7 @@ fn create_entry_details(metadata: &Metadata, req_path: &Path, base_path: &PathBu
 }
 
 async fn compose_response(
-    details: &FileDetails,
+    details: &EntryDetails,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let body = match serde_json::to_string(details) {
         Ok(bdy) => bdy,

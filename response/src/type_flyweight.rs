@@ -28,3 +28,11 @@ impl ResponseParams {
         }
     }
 }
+
+// normalize_path_lexically
+
+fn normalize_path_lexically(path_buf: &PathBuf) {
+    // split into components
+    // for each add to a stack, pop from a stack
+    // two stacks
+}
