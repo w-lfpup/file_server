@@ -50,7 +50,6 @@ pub fn get_path_from_request_url(req: &Request<Incoming>, directory: &PathBuf) -
 
 pub fn normalize_uri_path_lexically(path_buf: &PathBuf) -> Option<PathBuf> {
     let mut parts: Vec<Component> = Vec::new();
-    let mut debts: Vec<Component> = Vec::new();
 
     for component in path_buf.components() {
         match component {
@@ -59,11 +58,7 @@ pub fn normalize_uri_path_lexically(path_buf: &PathBuf) -> Option<PathBuf> {
                     return None;
                 };
             }
-            Component::Normal(_) => {
-                if let None = debts.pop() {
-                    parts.push(component);
-                }
-            }
+            Component::Normal(_) => parts.push(component),
             _ => {}
         }
     }
