@@ -5,7 +5,7 @@ use hyper::http::Response;
 use hyper::StatusCode;
 
 use crate::content_type::HTML;
-use crate::type_flyweight::BoxedResponse;
+use crate::utils_flyweight::BoxedResponse;
 
 pub fn build_response(
     status_code: StatusCode,

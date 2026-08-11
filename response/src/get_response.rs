@@ -11,14 +11,21 @@ use tokio_util::io::ReaderStream;
 use crate::content_type::get_content_type;
 use crate::last_resort_response;
 use crate::range_response;
-use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
-use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
+use crate::response_paths::{add_extension, get_encodings};
+use crate::serialize_details;
+use crate::utils_flyweight::{
+    get_url_path_from_request, BoxedResponse, ResponseParams, NOT_FOUND_404,
+};
 
-// check for ?serialize_as="json"
 pub async fn build_response(
     req: Request<Incoming>,
     res_params: ResponseParams,
 ) -> Result<BoxedResponse, hyper::http::Error> {
+    // check for a json details request
+    if let Some(res) = serialize_details::build_response(&req, &res_params).await {
+        return res;
+    };
+
     // check for range request
     if let Some(res) = range_response::build_response(&req, &res_params).await {
         return res;
@@ -38,7 +45,7 @@ async fn build_req_path_response(
     directory: &PathBuf,
     encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let filepath = match get_path_from_request_url(req, directory).await {
+    let filepath = match get_url_path_from_request(req, directory) {
         Some(fp) => fp,
         _ => return None,
     };
