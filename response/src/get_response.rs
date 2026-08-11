@@ -13,9 +13,7 @@ use crate::last_resort_response;
 use crate::range_response;
 use crate::response_paths::{add_extension, get_encodings};
 use crate::serialize_details;
-use crate::type_flyweight::{
-    get_path_from_request_url, BoxedResponse, ResponseParams, NOT_FOUND_404,
-};
+use crate::utils_flyweight::{get_path_from_request, BoxedResponse, ResponseParams, NOT_FOUND_404};
 
 pub async fn build_response(
     req: Request<Incoming>,
@@ -45,7 +43,7 @@ async fn build_req_path_response(
     directory: &PathBuf,
     encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let filepath = match get_path_from_request_url(req, directory) {
+    let filepath = match get_path_from_request(req, directory) {
         Some(fp) => fp,
         _ => return None,
     };

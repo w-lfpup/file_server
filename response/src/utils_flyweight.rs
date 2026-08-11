@@ -2,7 +2,7 @@ use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use hyper::body::Incoming;
 use hyper::http::{Request, Response};
-use std::path::{Component, PathBuf};
+use std::path::{Component, PathBuf, MAIN_SEPARATOR_STR};
 use tokio::io;
 
 use crate::available_encodings::AvailableEncodings;
@@ -30,7 +30,7 @@ impl ResponseParams {
     }
 }
 
-pub fn get_path_from_request_url(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
+pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
     let uri_path = PathBuf::from(req.uri().path());
 
     // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
@@ -39,8 +39,17 @@ pub fn get_path_from_request_url(req: &Request<Incoming>, directory: &PathBuf) -
         Some(url_path) => url_path,
         _ => return None,
     };
+    println!("normalized path: {:?}", normalized_url_path);
+    let mut joined = directory.join(normalized_url_path);
+    println!("joined: {:?}", joined);
 
-    let joined = directory.join(normalized_url_path);
+    // https://doc.rust-lang.org/beta/std/path/struct.Path.html#method.has_trailing_sep
+    if let Some(os_as_str) = joined.to_str() {
+        if os_as_str.ends_with(MAIN_SEPARATOR_STR) {
+            joined.push("index.html");
+            println!("joined got pushed: {:?}", joined);
+        }
+    }
 
     match joined.starts_with(directory) {
         true => Some(joined),

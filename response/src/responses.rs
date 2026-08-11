@@ -6,7 +6,7 @@ use hyper::StatusCode;
 use crate::get_response;
 use crate::head_response;
 use crate::last_resort_response;
-use crate::type_flyweight::{BoxedResponse, ResponseParams, METHOD_NOT_ALLOWED_405};
+use crate::utils_flyweight::{BoxedResponse, ResponseParams, METHOD_NOT_ALLOWED_405};
 
 pub async fn compose_response(
     req: Request<Incoming>,

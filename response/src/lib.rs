@@ -7,8 +7,8 @@ mod range_response;
 mod response_paths;
 mod responses;
 mod serialize_details;
-mod type_flyweight;
+mod utils_flyweight;
 
 pub use crate::responses::compose_response;
 pub use crate::serialize_details::{get_entry_details, EntryDetails, FileDetails};
-pub use crate::type_flyweight::{get_path_from_request_url, BoxedResponse, ResponseParams};
+pub use crate::utils_flyweight::{get_path_from_request, BoxedResponse, ResponseParams};
