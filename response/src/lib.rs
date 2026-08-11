@@ -11,4 +11,4 @@ mod type_flyweight;
 
 pub use crate::responses::compose_response;
 pub use crate::serialize_details::{get_entry_details, EntryDetails, FileDetails};
-pub use crate::type_flyweight::{BoxedResponse, ResponseParams};
+pub use crate::type_flyweight::{get_path_from_request_url, BoxedResponse, ResponseParams};

@@ -15,7 +15,7 @@ use tokio::fs;
 
 use crate::last_resort_response;
 use crate::type_flyweight::{
-    normalize_uri_path_lexically, BoxedResponse, ResponseParams, NOT_FOUND_404,
+    get_path_from_request_url, BoxedResponse, ResponseParams, NOT_FOUND_404,
 };
 
 // Need to jouge up for some clean json stuff, option should be property exists or no not NULL
@@ -98,27 +98,6 @@ pub async fn get_entry_details(directory: &PathBuf, uri_path: &PathBuf) -> Optio
     match metadata.is_dir() {
         true => build_directory_entry(&metadata, &uri_path, directory).await,
         _ => build_file_entry(&metadata, &uri_path, directory),
-    }
-}
-
-async fn get_path_from_request_url(
-    req: &Request<Incoming>,
-    directory: &PathBuf,
-) -> Option<PathBuf> {
-    let uri_path = PathBuf::from(req.uri().path());
-
-    // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
-    // normalize lexically in nightly
-    let normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
-        Some(url_path) => url_path,
-        _ => return None,
-    };
-
-    let joined = directory.join(normalized_url_path);
-
-    match joined.starts_with(directory) {
-        true => Some(joined),
-        _ => None,
     }
 }
 

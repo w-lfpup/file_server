@@ -13,9 +13,10 @@ use tokio_util::io::ReaderStream;
 
 use crate::content_type::get_content_type;
 use crate::last_resort_response;
-use crate::response_paths::{add_extension, get_encodings, get_path_from_request_url};
+use crate::response_paths::{add_extension, get_encodings};
 use crate::type_flyweight::{
-    BoxedResponse, ResponseParams, NOT_FOUND_404, RANGE_NOT_SATISFIABLE_416,
+    get_path_from_request_url, BoxedResponse, ResponseParams, NOT_FOUND_404,
+    RANGE_NOT_SATISFIABLE_416,
 };
 
 pub async fn build_response(

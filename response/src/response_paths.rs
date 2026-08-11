@@ -2,38 +2,8 @@ use hyper::body::Incoming;
 use hyper::header::ACCEPT_ENCODING;
 use hyper::http::Request;
 use std::path::PathBuf;
-use tokio::fs;
 
 use crate::available_encodings::{get_encoded_ext, AvailableEncodings};
-
-pub async fn get_path_from_request_url(
-    req: &Request<Incoming>,
-    directory: &PathBuf,
-) -> Option<PathBuf> {
-    let mut uri_path = req.uri().path().to_string();
-    if uri_path.ends_with("/") {
-        uri_path.push_str("index.html");
-    }
-
-    let stripped = match uri_path.strip_prefix("/") {
-        Some(p) => p,
-        _ => &uri_path,
-    };
-
-    let joined = directory.join(PathBuf::from(stripped));
-
-    // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
-    // normalize lexically in nightly
-    let target_path = match fs::canonicalize(joined).await {
-        Ok(pb) => pb,
-        _ => return None,
-    };
-
-    match target_path.starts_with(directory) {
-        true => Some(target_path),
-        _ => None,
-    }
-}
 
 pub fn get_encodings(
     req: &Request<Incoming>,

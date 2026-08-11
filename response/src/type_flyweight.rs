@@ -1,6 +1,7 @@
 use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
-use hyper::Response;
+use hyper::body::Incoming;
+use hyper::http::{Request, Response};
 use std::path::{Component, PathBuf};
 use tokio::io;
 
@@ -26,6 +27,27 @@ impl ResponseParams {
             directory,
             available_encodings,
         }
+    }
+}
+
+pub async fn get_path_from_request_url(
+    req: &Request<Incoming>,
+    directory: &PathBuf,
+) -> Option<PathBuf> {
+    let uri_path = PathBuf::from(req.uri().path());
+
+    // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
+    // normalize lexically in nightly
+    let normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
+        Some(url_path) => url_path,
+        _ => return None,
+    };
+
+    let joined = directory.join(normalized_url_path);
+
+    match joined.starts_with(directory) {
+        true => Some(joined),
+        _ => None,
     }
 }
 
