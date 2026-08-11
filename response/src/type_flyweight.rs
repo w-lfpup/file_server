@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use hyper::Response;
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 use tokio::io;
 
 use crate::available_encodings::AvailableEncodings;
@@ -29,10 +29,32 @@ impl ResponseParams {
     }
 }
 
-// normalize_path_lexically
+pub fn normalize_uri_path_lexically(path_buf: &PathBuf) -> Option<PathBuf> {
+    let mut parts: Vec<Component> = Vec::new();
+    let mut debts: Vec<Component> = Vec::new();
 
-fn normalize_path_lexically(path_buf: &PathBuf) {
-    // split into components
-    // for each add to a stack, pop from a stack
-    // two stacks
+    for component in path_buf.components() {
+        match component {
+            Component::ParentDir => {
+                if let None = parts.pop() {
+                    return None;
+                };
+            }
+            Component::Normal(_) => {
+                if let None = debts.pop() {
+                    parts.push(component);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut normalized_uri_path = PathBuf::new();
+    for component in parts {
+        if let Component::Normal(os_str) = component {
+            normalized_uri_path.push(os_str);
+        }
+    }
+
+    Some(normalized_uri_path)
 }

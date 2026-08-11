@@ -14,11 +14,13 @@ use std::time::SystemTime;
 use tokio::fs;
 
 use crate::last_resort_response;
-use crate::type_flyweight::{BoxedResponse, ResponseParams, NOT_FOUND_404};
+use crate::type_flyweight::{
+    normalize_uri_path_lexically, BoxedResponse, ResponseParams, NOT_FOUND_404,
+};
 
 // Need to jouge up for some clean json stuff, option should be property exists or no not NULL
 #[derive(Clone, Serialize, Deserialize, Debug)]
-struct FileDetails {
+pub struct FileDetails {
     is_dir: bool,
     file_name: String,
     url_path: PathBuf,
@@ -29,7 +31,7 @@ struct FileDetails {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-struct EntryDetails {
+pub struct EntryDetails {
     details: FileDetails,
     entries: Vec<FileDetails>,
 }
@@ -60,25 +62,33 @@ pub async fn build_response(
         return None;
     }
 
-    if let Some(details) = get_details(req, res_params).await {
-        if let Some(res) = compose_response(&details).await {
-            return Some(res);
-        }
-    }
-
-    Some(last_resort_response::build_response(
-        StatusCode::NOT_FOUND,
-        NOT_FOUND_404,
-    ))
+    compose_entry_details_response(req, res_params).await
 }
 
-async fn get_details(req: &Request<Incoming>, res_params: &ResponseParams) -> Option<EntryDetails> {
+// just make this an isolate function for now
+// get_details(base_directory, uri_path)
+async fn compose_entry_details_response(
+    req: &Request<Incoming>,
+    res_params: &ResponseParams,
+) -> Option<Result<BoxedResponse, hyper::http::Error>> {
     let req_path = match get_path_from_request_url(req, &res_params.directory).await {
         Some(pth) => pth,
         _ => return None,
     };
 
-    let metadata = match fs::metadata(&req_path).await {
+    let details = get_entry_details(&res_params.directory, &req_path).await;
+
+    match compose_response(details).await {
+        Some(res) => Some(res),
+        _ => Some(last_resort_response::build_response(
+            StatusCode::NOT_FOUND,
+            NOT_FOUND_404,
+        )),
+    }
+}
+
+pub async fn get_entry_details(directory: &PathBuf, uri_path: &PathBuf) -> Option<EntryDetails> {
+    let metadata = match fs::metadata(&uri_path).await {
         Ok(m) => m,
         _ => return None,
     };
@@ -86,8 +96,8 @@ async fn get_details(req: &Request<Incoming>, res_params: &ResponseParams) -> Op
     // if symlink?
 
     match metadata.is_dir() {
-        true => build_directory_entry(&metadata, &req_path, &res_params.directory).await,
-        _ => build_file_entry(&metadata, &req_path, &res_params.directory),
+        true => build_directory_entry(&metadata, &uri_path, directory).await,
+        _ => build_file_entry(&metadata, &uri_path, directory),
     }
 }
 
@@ -95,23 +105,19 @@ async fn get_path_from_request_url(
     req: &Request<Incoming>,
     directory: &PathBuf,
 ) -> Option<PathBuf> {
-    let uri_path = req.uri().path().to_string();
-    let stripped = match req.uri().path().strip_prefix("/") {
-        Some(p) => p,
-        _ => &uri_path,
-    };
-
-    let joined = directory.join(PathBuf::from(stripped));
+    let uri_path = PathBuf::from(req.uri().path());
 
     // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
     // normalize lexically in nightly
-    let target_path = match fs::canonicalize(joined).await {
-        Ok(pb) => pb,
+    let normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
+        Some(url_path) => url_path,
         _ => return None,
     };
 
-    match target_path.starts_with(directory) {
-        true => Some(target_path),
+    let joined = directory.join(normalized_url_path);
+
+    match joined.starts_with(directory) {
+        true => Some(joined),
         _ => None,
     }
 }
@@ -193,11 +199,16 @@ fn create_entry_details(metadata: &Metadata, req_path: &Path, base_path: &PathBu
 }
 
 async fn compose_response(
-    details: &EntryDetails,
+    details_opt: Option<EntryDetails>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let body = match serde_json::to_string(details) {
+    let details = match details_opt {
+        Some(deets) => deets,
+        _ => return None,
+    };
+
+    let body = match serde_json::to_string(&details) {
         Ok(bdy) => bdy,
-        Err(_) => return None,
+        _ => return None,
     };
 
     Some(
