@@ -45,7 +45,7 @@ async fn build_req_path_response(
     directory: &PathBuf,
     encodings: &Vec<String>,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let filepath = match get_path_from_request_url(req, directory).await {
+    let filepath = match get_path_from_request_url(req, directory) {
         Some(fp) => fp,
         _ => return None,
     };

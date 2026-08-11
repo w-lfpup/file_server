@@ -29,7 +29,7 @@ pub async fn build_response(
     };
 
     // flatten this
-    if let Some(filepath) = get_path_from_request_url(req, &res_params.directory).await {
+    if let Some(filepath) = get_path_from_request_url(req, &res_params.directory) {
         if let Some(ranges) = get_ranges(&range_header) {
             let encodings = get_encodings(req, &res_params.available_encodings);
 

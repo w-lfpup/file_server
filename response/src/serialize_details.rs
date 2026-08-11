@@ -71,7 +71,7 @@ async fn compose_entry_details_response(
     req: &Request<Incoming>,
     res_params: &ResponseParams,
 ) -> Option<Result<BoxedResponse, hyper::http::Error>> {
-    let req_path = match get_path_from_request_url(req, &res_params.directory).await {
+    let req_path = match get_path_from_request_url(req, &res_params.directory) {
         Some(pth) => pth,
         _ => return None,
     };

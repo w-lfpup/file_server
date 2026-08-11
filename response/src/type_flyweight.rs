@@ -30,10 +30,7 @@ impl ResponseParams {
     }
 }
 
-pub async fn get_path_from_request_url(
-    req: &Request<Incoming>,
-    directory: &PathBuf,
-) -> Option<PathBuf> {
+pub fn get_path_from_request_url(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
     let uri_path = PathBuf::from(req.uri().path());
 
     // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
