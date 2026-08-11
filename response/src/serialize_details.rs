@@ -14,9 +14,7 @@ use std::time::SystemTime;
 use tokio::fs;
 
 use crate::last_resort_response;
-use crate::utils_flyweight::{
-    normalize_uri_path_lexically, BoxedResponse, ResponseParams, NOT_FOUND_404,
-};
+use crate::utils_flyweight::{get_path_from_request, BoxedResponse, ResponseParams, NOT_FOUND_404};
 
 // Need to jouge up for some clean json stuff, option should be property exists or no not NULL
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -85,24 +83,6 @@ async fn compose_entry_details_response(
             NOT_FOUND_404,
         )),
     }
-}
-
-pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
-    let uri_path = PathBuf::from(req.uri().path());
-
-    // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
-    // normalize lexically in nightly
-    let normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
-        Some(url_path) => url_path,
-        _ => return None,
-    };
-
-    let joined_path = directory.join(normalized_url_path);
-    if joined_path.starts_with(directory) {
-        return Some(joined_path);
-    }
-
-    None
 }
 
 pub async fn get_entry_details(directory: &PathBuf, uri_path: &PathBuf) -> Option<EntryDetails> {

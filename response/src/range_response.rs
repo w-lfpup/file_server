@@ -15,7 +15,8 @@ use crate::content_type::get_content_type;
 use crate::last_resort_response;
 use crate::response_paths::{add_extension, get_encodings};
 use crate::utils_flyweight::{
-    get_path_from_request, BoxedResponse, ResponseParams, NOT_FOUND_404, RANGE_NOT_SATISFIABLE_416,
+    get_url_path_from_request, BoxedResponse, ResponseParams, NOT_FOUND_404,
+    RANGE_NOT_SATISFIABLE_416,
 };
 
 pub async fn build_response(
@@ -28,7 +29,7 @@ pub async fn build_response(
     };
 
     // flatten this
-    if let Some(filepath) = get_path_from_request(req, &res_params.directory) {
+    if let Some(filepath) = get_url_path_from_request(req, &res_params.directory) {
         if let Some(ranges) = get_ranges(&range_header) {
             let encodings = get_encodings(req, &res_params.available_encodings);
 

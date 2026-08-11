@@ -30,7 +30,7 @@ impl ResponseParams {
     }
 }
 
-pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
+pub fn get_url_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
     let uri_path = PathBuf::from(req.uri().path());
 
     // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
@@ -39,9 +39,7 @@ pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Op
         Some(url_path) => url_path,
         _ => return None,
     };
-    println!("normalized path: {:?}", normalized_url_path);
     let mut joined_path = directory.join(normalized_url_path);
-    println!("joined_path: {:?}", joined_path);
 
     if !joined_path.starts_with(directory) {
         return None;
@@ -52,11 +50,27 @@ pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Op
     if let Some(os_as_str) = joined_path.to_str() {
         if os_as_str.ends_with(MAIN_SEPARATOR_STR) {
             joined_path.push("index.html");
-            println!("joined_path got pushed: {:?}", joined_path);
         }
     }
 
     Some(joined_path)
+}
+
+pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
+    let uri_path = PathBuf::from(req.uri().path());
+
+    // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
+    // normalize lexically in nightly
+    let normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
+        Some(url_path) => url_path,
+        _ => return None,
+    };
+
+    let joined_path = directory.join(normalized_url_path);
+    match joined_path.starts_with(directory) {
+        true => Some(joined_path),
+        _ => None,
+    }
 }
 
 pub fn normalize_uri_path_lexically(path_buf: &PathBuf) -> Option<PathBuf> {
