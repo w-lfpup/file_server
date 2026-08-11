@@ -31,29 +31,20 @@ impl ResponseParams {
 }
 
 pub fn get_url_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
-    let uri_path = PathBuf::from(req.uri().path());
-
-    // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
-    // normalize lexically in nightly
-    let normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
-        Some(url_path) => url_path,
+    let mut url_path = match get_path_from_request(req, directory) {
+        Some(url_pth) => url_pth,
         _ => return None,
     };
-    let mut joined_path = directory.join(normalized_url_path);
-
-    if !joined_path.starts_with(directory) {
-        return None;
-    }
 
     // needs to be separate from this for serialize stuff
     // https://doc.rust-lang.org/beta/std/path/struct.Path.html#method.has_trailing_sep
-    if let Some(os_as_str) = joined_path.to_str() {
+    if let Some(os_as_str) = url_path.to_str() {
         if os_as_str.ends_with(MAIN_SEPARATOR_STR) {
-            joined_path.push("index.html");
+            url_path.push("index.html");
         }
     }
 
-    Some(joined_path)
+    Some(url_path)
 }
 
 pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
