@@ -40,21 +40,23 @@ pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Op
         _ => return None,
     };
     println!("normalized path: {:?}", normalized_url_path);
-    let mut joined = directory.join(normalized_url_path);
-    println!("joined: {:?}", joined);
+    let mut joined_path = directory.join(normalized_url_path);
+    println!("joined_path: {:?}", joined_path);
 
+    if !joined_path.starts_with(directory) {
+        return None;
+    }
+
+    // needs to be separate from this for serialize stuff
     // https://doc.rust-lang.org/beta/std/path/struct.Path.html#method.has_trailing_sep
-    if let Some(os_as_str) = joined.to_str() {
+    if let Some(os_as_str) = joined_path.to_str() {
         if os_as_str.ends_with(MAIN_SEPARATOR_STR) {
-            joined.push("index.html");
-            println!("joined got pushed: {:?}", joined);
+            joined_path.push("index.html");
+            println!("joined_path got pushed: {:?}", joined_path);
         }
     }
 
-    match joined.starts_with(directory) {
-        true => Some(joined),
-        _ => None,
-    }
+    Some(joined_path)
 }
 
 pub fn normalize_uri_path_lexically(path_buf: &PathBuf) -> Option<PathBuf> {
