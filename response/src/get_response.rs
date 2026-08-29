@@ -33,6 +33,7 @@ pub async fn build_response(
 
     let encodings = get_encodings(&req, &res_params.available_encodings);
 
+    println!("prepare to build get response!");
     if let Some(res) = build_req_path_response(&req, &res_params.directory, &encodings).await {
         return res;
     };
@@ -50,6 +51,7 @@ async fn build_req_path_response(
         _ => return None,
     };
 
+    println!("request filepath: {:?}", filepath);
     let content_type = get_content_type(&filepath);
 
     if let Some(res) = compose_encoded_response(&filepath, content_type, &encodings).await {

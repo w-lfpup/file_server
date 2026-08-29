@@ -49,13 +49,15 @@ pub fn get_url_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -
 
 pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
     let uri_path = PathBuf::from(req.uri().path());
-
+    println!("get_path_from_reqeust! {:?}", uri_path);
     // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
     // normalize lexically in nightly
     let normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
         Some(url_path) => url_path,
         _ => return None,
     };
+
+    println!("normalized url: {:?}", &normalized_url_path);
 
     let joined_path = directory.join(normalized_url_path);
     match joined_path.starts_with(directory) {
@@ -83,6 +85,12 @@ pub fn normalize_uri_path_lexically(path_buf: &PathBuf) -> Option<PathBuf> {
     for component in parts {
         if let Component::Normal(os_str) = component {
             normalized_uri_path.push(os_str);
+        }
+    }
+
+    if let Some(pth) = path_buf.to_str() {
+        if pth.ends_with(MAIN_SEPARATOR_STR) {
+            normalized_uri_path.push("");
         }
     }
 

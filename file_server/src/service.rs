@@ -27,6 +27,7 @@ impl Service<Request<IncomingBody>> for Svc {
 
     fn call(&self, req: Request<IncomingBody>) -> Self::Future {
         let path = PathBuf::from(req.uri().path());
+        println!("service called with: {:?}", &path);
 
         let mut params: Option<ResponseParams> = None;
         for (dir_entry, response_params) in &self.url_paths {
@@ -36,6 +37,7 @@ impl Service<Request<IncomingBody>> for Svc {
             }
         }
 
+        println!("found request params: {:?}", params);
         Box::pin(async move { compose_response(req, params).await })
     }
 }
