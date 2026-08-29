@@ -39,7 +39,7 @@ curl localhost:3000
 
 ### Configuration
 
-A valid [JSON configuration file](./demo/file_server_config_example.json) matches the following schema.
+A valid [JSON configuration file](./demo/config.example.json) matches the following schema:
 
 ```JSON
 {
@@ -49,7 +49,7 @@ A valid [JSON configuration file](./demo/file_server_config_example.json) matche
 }
 ```
 
-Filepaths can be relative or absolute. Relative paths are "relative from" the filepath of the JSON configuration file.
+Filepaths can be absolute or relative from the filepath of the JSON configuration file.
 
 The `content_encodings` property is optional.
 

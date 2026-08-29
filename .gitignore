@@ -18,5 +18,5 @@ Cargo.lock
 # FILE SERVER
 
 *.json
-!file_server_config_example.json
+!*.example.json
 .DS_Store

@@ -23,7 +23,7 @@ async fn main() -> Result<(), Error> {
         Err(e) => return Err(Error::Io(e)),
     };
 
-    let svc = service::Svc::from(conf);
+    let svc = service::Svc::from(&conf);
 
     loop {
         let (stream, _remote_address) = match listener.accept().await {
