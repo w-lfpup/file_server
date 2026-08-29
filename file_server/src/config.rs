@@ -10,7 +10,13 @@ use crate::errors::Error;
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
     pub host_and_port: String,
+    pub directories: Vec<DirEntry>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct DirEntry {
     pub directory: PathBuf,
+    pub url_path_prefix: String,
     pub content_encodings: Option<Vec<String>>,
 }
 
@@ -22,9 +28,12 @@ impl Config {
         };
 
         Ok(Config {
-            host_and_port: "0.0.0.0:3000".to_string(),
-            directory: curr_dir,
-            content_encodings: None,
+            host_and_port: "127.0.0.1:3000".to_string(),
+            directories: Vec::from([DirEntry {
+                directory: curr_dir,
+                url_path_prefix: "/".to_string(),
+                content_encodings: None,
+            }]),
         })
     }
 
@@ -54,14 +63,15 @@ impl Config {
             }
         };
 
-        // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
-        // normalize lexically
-        let target_directory = match fs::canonicalize(parent_dir.join(config.directory)).await {
-            Ok(pb) => pb,
-            Err(e) => return Err(Error::Io(e)),
-        };
+        for dir_entry in &mut config.directories {
+            let target_directory =
+                match fs::canonicalize(parent_dir.join(dir_entry.directory.clone())).await {
+                    Ok(pb) => pb,
+                    Err(e) => return Err(Error::Io(e)),
+                };
 
-        config.directory = target_directory;
+            dir_entry.directory = target_directory;
+        }
 
         Ok(config)
     }

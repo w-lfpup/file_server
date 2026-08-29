@@ -11,6 +11,4 @@ mod utils_flyweight;
 
 pub use crate::responses::compose_response;
 pub use crate::serialize_details::{get_entry_details, EntryDetails, FileDetails};
-pub use crate::utils_flyweight::{
-    get_path_from_request, get_url_path_from_request, BoxedResponse, ResponseParams,
-};
+pub use crate::utils_flyweight::{get_url_path_from_request, BoxedResponse, ResponseParams};
