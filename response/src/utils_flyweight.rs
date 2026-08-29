@@ -2,7 +2,7 @@ use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use hyper::body::Incoming;
 use hyper::http::{Request, Response};
-use std::path::{Component, PathBuf, MAIN_SEPARATOR_STR};
+use std::path::{Component, PathBuf};
 use tokio::io;
 
 use crate::available_encodings::AvailableEncodings;
@@ -69,7 +69,7 @@ pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Op
 }
 
 pub fn normalize_uri_path_lexically(path_buf_str: &str) -> Option<PathBuf> {
-    let path_buf = PathBuf::from(req.uri().path());
+    let path_buf = PathBuf::from(path_buf_str);
 
     let mut parts: Vec<Component> = Vec::new();
     for component in path_buf.components() {
