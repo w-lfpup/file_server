@@ -43,10 +43,14 @@ A valid [JSON configuration file](./demo/config.example.json) matches the follow
 
 ```JSON
 {
-    "directory": "./",
     "host_and_port": "127.0.0.1:4000",
-    "content_encodings": ["gzip", "deflate", "br", "zstd"]
+	"directories": [{
+		"directory": "./",
+		"url_path_prefix": "/",
+		"content_encodings": ["zstd"]
+	}]
 }
+
 ```
 
 Filepaths can be absolute or relative from the filepath of the JSON configuration file.
