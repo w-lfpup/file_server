@@ -30,34 +30,18 @@ impl ResponseParams {
     }
 }
 
+// https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
+// normalize lexically in nightly
 pub fn get_url_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
-    let mut url_path = match get_path_from_request(req, directory) {
-        Some(url_pth) => url_pth,
-        _ => return None,
-    };
-
-    // needs to be separate from this for serialize stuff
-    // https://doc.rust-lang.org/beta/std/path/struct.Path.html#method.has_trailing_sep
-    if let Some(os_as_str) = url_path.to_str() {
-        if os_as_str.ends_with(MAIN_SEPARATOR_STR) {
-            url_path.push("index.html");
-        }
-    }
-
-    Some(url_path)
-}
-
-pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
-    let uri_path = PathBuf::from(req.uri().path());
-    println!("get_path_from_reqeust! {:?}", uri_path);
-    // https://doc.rust-lang.org/std/path/struct.Path.html#method.normalize_lexically
-    // normalize lexically in nightly
-    let normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
+    let uri_path = req.uri().path();
+    let mut normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
         Some(url_path) => url_path,
         _ => return None,
     };
 
-    println!("normalized url: {:?}", &normalized_url_path);
+    if req.uri().path().ends_with("/") {
+        normalized_url_path.push("index.html");
+    }
 
     let joined_path = directory.join(normalized_url_path);
     match joined_path.starts_with(directory) {
@@ -66,9 +50,28 @@ pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Op
     }
 }
 
-pub fn normalize_uri_path_lexically(path_buf: &PathBuf) -> Option<PathBuf> {
-    let mut parts: Vec<Component> = Vec::new();
+pub fn get_path_from_request(req: &Request<Incoming>, directory: &PathBuf) -> Option<PathBuf> {
+    let uri_path = req.uri().path();
+    let mut normalized_url_path = match normalize_uri_path_lexically(&uri_path) {
+        Some(url_path) => url_path,
+        _ => return None,
+    };
 
+    if req.uri().path().ends_with("/") {
+        normalized_url_path.push("");
+    }
+
+    let joined_path = directory.join(normalized_url_path);
+    match joined_path.starts_with(directory) {
+        true => Some(joined_path),
+        _ => None,
+    }
+}
+
+pub fn normalize_uri_path_lexically(path_buf_str: &str) -> Option<PathBuf> {
+    let path_buf = PathBuf::from(req.uri().path());
+
+    let mut parts: Vec<Component> = Vec::new();
     for component in path_buf.components() {
         match component {
             Component::ParentDir => {
@@ -85,12 +88,6 @@ pub fn normalize_uri_path_lexically(path_buf: &PathBuf) -> Option<PathBuf> {
     for component in parts {
         if let Component::Normal(os_str) = component {
             normalized_uri_path.push(os_str);
-        }
-    }
-
-    if let Some(pth) = path_buf.to_str() {
-        if pth.ends_with(MAIN_SEPARATOR_STR) {
-            normalized_uri_path.push("");
         }
     }
 
